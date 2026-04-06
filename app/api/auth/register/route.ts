@@ -24,6 +24,7 @@ export async function POST(req: NextRequest) {
       name,
       email,
       passwordHash,
+      role: 'user',
       createdAt: new Date().toISOString(),
     };
     users.push(newUser);

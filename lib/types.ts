@@ -3,6 +3,7 @@ export interface User {
   name: string;
   email: string;
   passwordHash: string;
+  role: 'admin' | 'user';
   createdAt: string;
 }
 
