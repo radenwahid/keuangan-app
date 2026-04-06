@@ -1,0 +1,8 @@
+{
+  "buildCommand": "bun run build",
+  "installCommand": "bun install",
+  "framework": "nextjs",
+  "env": {
+    "JWT_SECRET": "@jwt_secret"
+  }
+}
