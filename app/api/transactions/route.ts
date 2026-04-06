@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { readJSONAsync, writeJSONAsync } from '@/lib/db';
 import { generateId } from '@/lib/utils';
-import { Transaction } from '@/lib/types';
+import { Transaction, Notification } from '@/lib/types';
 
 export async function GET(req: NextRequest) {
   try {
@@ -55,6 +55,22 @@ export async function POST(req: NextRequest) {
     };
     txs.push(newTx);
     await writeJSONAsync('transactions.json', txs);
+
+    // Auto-create notification
+    const notifs = await readJSONAsync<Notification>('notifications.json');
+    const fmt = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(Number(amount));
+    notifs.push({
+      id: generateId(),
+      userId: user.userId,
+      title: type === 'income' ? 'Pemasukan dicatat' : 'Pengeluaran dicatat',
+      message: `${category} · ${fmt} dari ${walletType === 'bank' ? 'Bank/E-Wallet' : 'Cash'}${note ? ` · ${note}` : ''}`,
+      type: 'transaction',
+      read: false,
+      createdAt: new Date().toISOString(),
+      transactionId: newTx.id,
+    });
+    await writeJSONAsync('notifications.json', notifs);
+
     return NextResponse.json(newTx, { status: 201 });
   } catch {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
