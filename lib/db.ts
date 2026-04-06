@@ -1,7 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 
-const isVercel = !!process.env.KV_REST_API_URL;
+// Upstash inject: UPSTASH_REDIS_REST_URL dan UPSTASH_REDIS_REST_TOKEN
+const isVercel = !!process.env.UPSTASH_REDIS_REST_URL;
 
 // ── LOCAL ────────────────────────────────────────────────────
 const DATA_DIR = path.join(process.cwd(), 'data');
@@ -26,20 +27,28 @@ function localWrite<T>(filename: string, data: T[]): void {
   fs.writeFileSync(path.join(DATA_DIR, filename), JSON.stringify(data, null, 2), 'utf-8');
 }
 
-// ── VERCEL KV (lazy import) ──────────────────────────────────
+// ── UPSTASH REDIS (lazy) ─────────────────────────────────────
 function kvKey(filename: string): string {
   return filename.replace('.json', '');
 }
 
+async function getRedis() {
+  const { Redis } = await import('@upstash/redis');
+  return new Redis({
+    url: process.env.UPSTASH_REDIS_REST_URL!,
+    token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+  });
+}
+
 async function kvRead<T>(filename: string): Promise<T[]> {
-  const { kv } = await import('@vercel/kv');
-  const data = await kv.get<T[]>(kvKey(filename));
+  const redis = await getRedis();
+  const data = await redis.get<T[]>(kvKey(filename));
   return data ?? [];
 }
 
 async function kvWrite<T>(filename: string, data: T[]): Promise<void> {
-  const { kv } = await import('@vercel/kv');
-  await kv.set(kvKey(filename), data);
+  const redis = await getRedis();
+  await redis.set(kvKey(filename), data);
 }
 
 // ── PUBLIC API ───────────────────────────────────────────────
@@ -53,7 +62,6 @@ export async function writeJSONAsync<T>(filename: string, data: T[]): Promise<vo
   localWrite(filename, data);
 }
 
-// Sync fallback untuk kompatibilitas lokal (tidak dipakai di Vercel)
 export function readJSON<T>(filename: string): T[] {
   return localRead<T>(filename);
 }
