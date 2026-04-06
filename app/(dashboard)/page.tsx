@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Plus, TrendingUp, TrendingDown, Wallet } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, TrendingUp, TrendingDown, Wallet, Banknote, CreditCard } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
@@ -51,6 +51,14 @@ export default function DashboardPage() {
   const totalIncome = transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
   const totalExpense = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
   const balance = totalIncome - totalExpense;
+
+  // Wallet balances (all-time from current month filtered data — use all transactions for balance)
+  const cashIncome = transactions.filter(t => t.type === 'income' && t.walletType === 'cash').reduce((s, t) => s + t.amount, 0);
+  const cashExpense = transactions.filter(t => t.type === 'expense' && t.walletType === 'cash').reduce((s, t) => s + t.amount, 0);
+  const bankIncome = transactions.filter(t => t.type === 'income' && t.walletType === 'bank').reduce((s, t) => s + t.amount, 0);
+  const bankExpense = transactions.filter(t => t.type === 'expense' && t.walletType === 'bank').reduce((s, t) => s + t.amount, 0);
+  const cashBalance = cashIncome - cashExpense;
+  const bankBalance = bankIncome - bankExpense;
 
   // Daily chart data
   const dailyMap: Record<string, { income: number; expense: number }> = {};
@@ -106,24 +114,48 @@ export default function DashboardPage() {
           <SkeletonCard /><SkeletonCard /><SkeletonCard />
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {[
-            { label: 'Total Pemasukan', value: totalIncome, icon: TrendingUp, color: 'from-emerald-400 to-teal-400', bg: 'bg-emerald-50', text: 'text-emerald-700' },
-            { label: 'Total Pengeluaran', value: totalExpense, icon: TrendingDown, color: 'from-pink-400 to-rose-400', bg: 'bg-pink-50', text: 'text-pink-700' },
-            { label: 'Saldo Bersih', value: balance, icon: Wallet, color: 'from-violet-400 to-purple-400', bg: 'bg-violet-50', text: 'text-violet-700' },
-          ].map((card, i) => (
-            <motion.div key={card.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
-              className={`${card.bg} rounded-2xl p-5 border border-white shadow-sm`}>
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-medium text-gray-500">{card.label}</span>
-                <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${card.color} flex items-center justify-center`}>
-                  <card.icon size={16} className="text-white" />
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {[
+              { label: 'Total Pemasukan', value: totalIncome, icon: TrendingUp, color: 'from-emerald-400 to-teal-400', bg: 'bg-emerald-50', text: 'text-emerald-700' },
+              { label: 'Total Pengeluaran', value: totalExpense, icon: TrendingDown, color: 'from-pink-400 to-rose-400', bg: 'bg-pink-50', text: 'text-pink-700' },
+              { label: 'Saldo Bersih', value: balance, icon: Wallet, color: 'from-violet-400 to-purple-400', bg: 'bg-violet-50', text: 'text-violet-700' },
+            ].map((card, i) => (
+              <motion.div key={card.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
+                className={`${card.bg} rounded-2xl p-5 border border-white shadow-sm`}>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-medium text-gray-500">{card.label}</span>
+                  <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${card.color} flex items-center justify-center`}>
+                    <card.icon size={16} className="text-white" />
+                  </div>
                 </div>
-              </div>
-              <p className={`text-xl font-bold ${card.text}`}>{formatRupiah(card.value)}</p>
-            </motion.div>
-          ))}
-        </div>
+                <p className={`text-xl font-bold ${card.text}`}>{formatRupiah(card.value)}</p>
+              </motion.div>
+            ))}
+          </div>
+          {/* Wallet balance cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {[
+              { label: 'Saldo Cash', value: cashBalance, income: cashIncome, expense: cashExpense, icon: Banknote, color: 'from-amber-400 to-orange-400', bg: 'bg-amber-50', text: 'text-amber-700', sub: 'text-amber-500' },
+              { label: 'Saldo Bank / E-Wallet', value: bankBalance, income: bankIncome, expense: bankExpense, icon: CreditCard, color: 'from-blue-400 to-indigo-400', bg: 'bg-blue-50', text: 'text-blue-700', sub: 'text-blue-500' },
+            ].map((card, i) => (
+              <motion.div key={card.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 + i * 0.1 }}
+                className={`${card.bg} rounded-2xl p-5 border border-white shadow-sm`}>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-medium text-gray-500">{card.label}</span>
+                  <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${card.color} flex items-center justify-center`}>
+                    <card.icon size={16} className="text-white" />
+                  </div>
+                </div>
+                <p className={`text-xl font-bold ${card.text}`}>{formatRupiah(card.value)}</p>
+                <div className="flex gap-4 mt-2">
+                  <span className="text-xs text-emerald-500">+{formatRupiah(card.income)}</span>
+                  <span className="text-xs text-pink-500">-{formatRupiah(card.expense)}</span>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </>
       )}
 
       {/* Charts */}

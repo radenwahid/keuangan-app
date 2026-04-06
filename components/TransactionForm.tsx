@@ -1,8 +1,8 @@
 'use client';
-import { useState, useEffect } from 'react';
-import { Category, Template, Transaction } from '@/lib/types';
+import { useState } from 'react';
+import { Category, Template, Transaction, WalletType } from '@/lib/types';
 import { formatRupiah } from '@/lib/utils';
-import CategoryIcon from './CategoryIcon';
+import { Banknote, CreditCard } from 'lucide-react';
 
 interface Props {
   onSubmit: (data: Partial<Transaction>) => Promise<void>;
@@ -14,6 +14,7 @@ interface Props {
 
 export default function TransactionForm({ onSubmit, onClose, initial, categories, templates = [] }: Props) {
   const [type, setType] = useState<'income' | 'expense'>(initial?.type || 'expense');
+  const [walletType, setWalletType] = useState<WalletType>(initial?.walletType || 'cash');
   const [amount, setAmount] = useState(initial?.amount?.toString() || '');
   const [category, setCategory] = useState(initial?.category || '');
   const [note, setNote] = useState(initial?.note || '');
@@ -34,7 +35,7 @@ export default function TransactionForm({ onSubmit, onClose, initial, categories
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    await onSubmit({ type, amount: Number(amount), category, note, date });
+    await onSubmit({ type, walletType, amount: Number(amount), category, note, date });
     setLoading(false);
   }
 
@@ -70,6 +71,33 @@ export default function TransactionForm({ onSubmit, onClose, initial, categories
           className={`flex-1 py-2.5 text-sm font-medium transition-all ${type === 'income' ? 'bg-emerald-500 text-white' : 'text-pink-400 hover:bg-pink-50'}`}>
           Pemasukan
         </button>
+      </div>
+
+      {/* Wallet type */}
+      <div>
+        <label className="text-xs font-medium text-pink-600 mb-1.5 block">
+          {type === 'income' ? 'Masuk ke' : 'Bayar dari'}
+        </label>
+        <div className="grid grid-cols-2 gap-2">
+          <button type="button" onClick={() => setWalletType('cash')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-all ${
+              walletType === 'cash'
+                ? 'border-emerald-400 bg-emerald-50 text-emerald-700'
+                : 'border-pink-200 text-pink-400 hover:bg-pink-50'
+            }`}>
+            <Banknote size={16} />
+            Cash
+          </button>
+          <button type="button" onClick={() => setWalletType('bank')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-all ${
+              walletType === 'bank'
+                ? 'border-blue-400 bg-blue-50 text-blue-700'
+                : 'border-pink-200 text-pink-400 hover:bg-pink-50'
+            }`}>
+            <CreditCard size={16} />
+            Bank / E-Wallet
+          </button>
+        </div>
       </div>
 
       {/* Amount */}

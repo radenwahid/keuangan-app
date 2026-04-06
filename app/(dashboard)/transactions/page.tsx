@@ -1,11 +1,16 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
-import { motion } from 'framer-motion';
-import { Plus, Pencil, Trash2, ChevronLeft, ChevronRight, Download, FileSpreadsheet, CreditCard } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Plus, Pencil, Trash2, ChevronLeft, ChevronRight,
+  Download, FileSpreadsheet, CreditCard, Banknote, Eye,
+  CheckSquare, Square, X,
+} from 'lucide-react';
 import { Transaction, Category, Template } from '@/lib/types';
 import { formatRupiah, formatDate } from '@/lib/utils';
 import Modal from '@/components/Modal';
 import TransactionForm from '@/components/TransactionForm';
+import TransactionReceipt from '@/components/TransactionReceipt';
 import CategoryIcon from '@/components/CategoryIcon';
 import { SkeletonList } from '@/components/Skeleton';
 import { useToast } from '@/components/Toast';
@@ -23,9 +28,14 @@ export default function TransactionsPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editTx, setEditTx] = useState<Transaction | null>(null);
+  const [viewTx, setViewTx] = useState<Transaction | null>(null);
   const [filterType, setFilterType] = useState('');
   const [filterCat, setFilterCat] = useState('');
+  const [filterWallet, setFilterWallet] = useState('');
   const [page, setPage] = useState(1);
+  // Bulk select
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkMode, setBulkMode] = useState(false);
   const { showToast } = useToast();
 
   const fetchData = useCallback(async () => {
@@ -38,12 +48,15 @@ export default function TransactionsPage() {
       fetch('/api/categories'),
       fetch('/api/templates'),
     ]);
-    setTransactions(await txRes.json());
+    let txs = await txRes.json();
+    if (filterWallet) txs = txs.filter((t: Transaction) => t.walletType === filterWallet);
+    setTransactions(txs);
     setCategories(await catRes.json());
     setTemplates(await tplRes.json());
     setLoading(false);
     setPage(1);
-  }, [month, year, filterType, filterCat]);
+    setSelected(new Set());
+  }, [month, year, filterType, filterCat, filterWallet]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -70,41 +83,82 @@ export default function TransactionsPage() {
     else showToast('Gagal menghapus', 'error');
   }
 
-  async function exportPDF() {
+  // ── Bulk helpers ──────────────────────────────────────────
+  const paginated = transactions.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const totalPages = Math.ceil(transactions.length / PAGE_SIZE);
+
+  function toggleSelect(id: string) {
+    setSelected(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    if (paginated.every(t => selected.has(t.id))) {
+      setSelected(prev => { const n = new Set(prev); paginated.forEach(t => n.delete(t.id)); return n; });
+    } else {
+      setSelected(prev => { const n = new Set(prev); paginated.forEach(t => n.add(t.id)); return n; });
+    }
+  }
+
+  function exitBulk() { setBulkMode(false); setSelected(new Set()); }
+
+  const selectedTxs = transactions.filter(t => selected.has(t.id));
+  const allPageSelected = paginated.length > 0 && paginated.every(t => selected.has(t.id));
+
+  // ── Export helpers (all or selected) ─────────────────────
+  function getExportData(source: Transaction[]) {
+    return source.map(t => ({
+      Tanggal: formatDate(t.date),
+      Tipe: t.type === 'income' ? 'Pemasukan' : 'Pengeluaran',
+      Kategori: t.category,
+      Dompet: t.walletType === 'bank' ? 'Bank/E-Wallet' : 'Cash',
+      Catatan: t.note,
+      Nominal: t.amount,
+    }));
+  }
+
+  async function exportPDF(source: Transaction[], label: string) {
     const { default: jsPDF } = await import('jspdf');
     const { default: autoTable } = await import('jspdf-autotable');
     const doc = new jsPDF();
     doc.setFontSize(16);
-    doc.text(`Laporan Transaksi - ${MONTHS[month-1]} ${year}`, 14, 20);
+    doc.text(`Laporan Transaksi - ${label}`, 14, 20);
     autoTable(doc, {
       startY: 30,
-      head: [['Tanggal', 'Tipe', 'Kategori', 'Catatan', 'Nominal']],
-      body: transactions.map(t => [formatDate(t.date), t.type === 'income' ? 'Pemasukan' : 'Pengeluaran', t.category, t.note, formatRupiah(t.amount)]),
+      head: [['Tanggal', 'Tipe', 'Kategori', 'Dompet', 'Catatan', 'Nominal']],
+      body: source.map(t => [
+        formatDate(t.date),
+        t.type === 'income' ? 'Pemasukan' : 'Pengeluaran',
+        t.category,
+        t.walletType === 'bank' ? 'Bank/E-Wallet' : 'Cash',
+        t.note,
+        formatRupiah(t.amount),
+      ]),
       styles: { fontSize: 9 },
       headStyles: { fillColor: [236, 72, 153] },
     });
-    doc.save(`transaksi-${month}-${year}.pdf`);
+    doc.save(`transaksi-${label.replace(/\s/g, '-')}.pdf`);
   }
 
-  async function exportExcel() {
+  async function exportExcel(source: Transaction[], label: string) {
     const XLSX = await import('xlsx');
-    const ws = XLSX.utils.json_to_sheet(transactions.map(t => ({
-      Tanggal: formatDate(t.date), Tipe: t.type === 'income' ? 'Pemasukan' : 'Pengeluaran',
-      Kategori: t.category, Catatan: t.note, Nominal: t.amount,
-    })));
+    const ws = XLSX.utils.json_to_sheet(getExportData(source));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Transaksi');
-    XLSX.writeFile(wb, `transaksi-${month}-${year}.xlsx`);
+    XLSX.writeFile(wb, `transaksi-${label.replace(/\s/g, '-')}.xlsx`);
   }
+
+  const monthLabel = `${MONTHS[month - 1]}-${year}`;
 
   function getCategoryColor(name: string) { return categories.find(c => c.name === name)?.color || '#EC4899'; }
   function getCategoryIcon(name: string) { return categories.find(c => c.name === name)?.icon || 'Tag'; }
 
-  const paginated = transactions.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-  const totalPages = Math.ceil(transactions.length / PAGE_SIZE);
-
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-pink-800">Transaksi</h1>
@@ -116,13 +170,22 @@ export default function TransactionsPage() {
             <span className="text-sm font-medium text-pink-700 min-w-[110px] text-center">{MONTHS[month-1]} {year}</span>
             <button onClick={nextMonth} className="p-1 rounded-lg hover:bg-pink-50 text-pink-400"><ChevronRight size={16} /></button>
           </div>
-          <button onClick={exportPDF} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-pink-100 text-pink-500 text-sm shadow-sm hover:bg-pink-50">
+          {/* Export semua */}
+          <button onClick={() => exportPDF(transactions, monthLabel)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-pink-100 text-pink-500 text-sm shadow-sm hover:bg-pink-50">
             <Download size={15} /> PDF
           </button>
-          <button onClick={exportExcel} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-pink-100 text-emerald-500 text-sm shadow-sm hover:bg-emerald-50">
+          <button onClick={() => exportExcel(transactions, monthLabel)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-pink-100 text-emerald-500 text-sm shadow-sm hover:bg-emerald-50">
             <FileSpreadsheet size={15} /> Excel
           </button>
-          <button onClick={() => setShowModal(true)} className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-gradient-to-r from-pink-500 to-fuchsia-500 text-white text-sm shadow-md shadow-pink-200">
+          {/* Bulk mode toggle */}
+          <button onClick={() => { setBulkMode(b => !b); setSelected(new Set()); }}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-sm shadow-sm transition-all ${bulkMode ? 'bg-violet-500 border-violet-500 text-white' : 'bg-white border-pink-100 text-violet-500 hover:bg-violet-50'}`}>
+            <CheckSquare size={15} /> Pilih
+          </button>
+          <button onClick={() => setShowModal(true)}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-gradient-to-r from-pink-500 to-fuchsia-500 text-white text-sm shadow-md shadow-pink-200">
             <Plus size={16} /> Tambah
           </button>
         </div>
@@ -141,7 +204,64 @@ export default function TransactionsPage() {
           <option value="">Semua Kategori</option>
           {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
         </select>
+        <select value={filterWallet} onChange={e => setFilterWallet(e.target.value)}
+          className="px-3 py-2 rounded-xl border border-pink-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-pink-300">
+          <option value="">Semua Dompet</option>
+          <option value="cash">Cash</option>
+          <option value="bank">Bank / E-Wallet</option>
+        </select>
       </div>
+
+      {/* Bulk action bar */}
+      <AnimatePresence>
+        {bulkMode && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="bg-violet-50 border border-violet-200 rounded-2xl px-4 py-3 flex flex-wrap items-center gap-3"
+          >
+            {/* Select all on page */}
+            <button onClick={toggleSelectAll}
+              className="flex items-center gap-1.5 text-sm text-violet-600 font-medium hover:text-violet-800">
+              {allPageSelected ? <CheckSquare size={16} /> : <Square size={16} />}
+              {allPageSelected ? 'Batal semua' : 'Pilih halaman ini'}
+            </button>
+
+            <span className="text-xs text-violet-400">|</span>
+
+            {/* Quick select by type */}
+            <button onClick={() => setSelected(new Set(transactions.filter(t => t.type === 'income').map(t => t.id)))}
+              className="text-xs px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-700 hover:bg-emerald-200 font-medium">
+              Semua Pemasukan
+            </button>
+            <button onClick={() => setSelected(new Set(transactions.filter(t => t.type === 'expense').map(t => t.id)))}
+              className="text-xs px-2.5 py-1 rounded-lg bg-pink-100 text-pink-700 hover:bg-pink-200 font-medium">
+              Semua Pengeluaran
+            </button>
+
+            <div className="flex-1" />
+
+            {selected.size > 0 && (
+              <>
+                <span className="text-xs text-violet-500 font-medium">{selected.size} dipilih</span>
+                <button onClick={() => exportPDF(selectedTxs, `pilihan-${monthLabel}`)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-pink-500 text-white text-xs font-medium hover:bg-pink-600">
+                  <Download size={13} /> PDF
+                </button>
+                <button onClick={() => exportExcel(selectedTxs, `pilihan-${monthLabel}`)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500 text-white text-xs font-medium hover:bg-emerald-600">
+                  <FileSpreadsheet size={13} /> Excel
+                </button>
+              </>
+            )}
+
+            <button onClick={exitBulk} className="p-1.5 rounded-lg hover:bg-violet-100 text-violet-400">
+              <X size={16} />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* List */}
       {loading ? <SkeletonList /> : paginated.length === 0 ? (
@@ -151,31 +271,56 @@ export default function TransactionsPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {paginated.map((t, i) => (
-            <motion.div key={t.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
-              className="bg-white rounded-2xl p-4 border border-pink-100 shadow-sm flex items-center gap-3">
-              <div className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
-                style={{ backgroundColor: getCategoryColor(t.category) + '20' }}>
-                <CategoryIcon icon={getCategoryIcon(t.category)} size={18} style={{ color: getCategoryColor(t.category) }} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-semibold text-gray-700">{t.category}</p>
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${t.type === 'income' ? 'bg-emerald-100 text-emerald-600' : 'bg-pink-100 text-pink-600'}`}>
-                    {t.type === 'income' ? 'Pemasukan' : 'Pengeluaran'}
-                  </span>
+          {paginated.map((t, i) => {
+            const isSelected = selected.has(t.id);
+            return (
+              <motion.div key={t.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
+                className={`bg-white rounded-2xl p-4 border shadow-sm flex items-center gap-3 transition-all ${
+                  isSelected ? 'border-violet-300 bg-violet-50' : 'border-pink-100'
+                } ${bulkMode ? 'cursor-pointer' : 'cursor-pointer sm:cursor-default'}`}
+                onClick={() => bulkMode ? toggleSelect(t.id) : setViewTx(t)}>
+
+                {/* Checkbox (bulk mode) */}
+                {bulkMode && (
+                  <div className="flex-shrink-0 text-violet-500" onClick={e => { e.stopPropagation(); toggleSelect(t.id); }}>
+                    {isSelected ? <CheckSquare size={20} /> : <Square size={20} className="text-gray-300" />}
+                  </div>
+                )}
+
+                <div className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
+                  style={{ backgroundColor: getCategoryColor(t.category) + '20' }}>
+                  <CategoryIcon icon={getCategoryIcon(t.category)} size={18} style={{ color: getCategoryColor(t.category) }} />
                 </div>
-                <p className="text-xs text-gray-400 truncate">{t.note || '—'} · {formatDate(t.date)}</p>
-              </div>
-              <span className={`text-sm font-bold flex-shrink-0 ${t.type === 'income' ? 'text-emerald-500' : 'text-pink-500'}`}>
-                {t.type === 'income' ? '+' : '-'}{formatRupiah(t.amount)}
-              </span>
-              <div className="flex gap-1 flex-shrink-0">
-                <button onClick={() => setEditTx(t)} className="p-2 rounded-lg hover:bg-pink-50 text-pink-400"><Pencil size={15} /></button>
-                <button onClick={() => handleDelete(t.id)} className="p-2 rounded-lg hover:bg-red-50 text-red-400"><Trash2 size={15} /></button>
-              </div>
-            </motion.div>
-          ))}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-sm font-semibold text-gray-700">{t.category}</p>
+                    <span className={`hidden sm:inline-flex text-xs px-2 py-0.5 rounded-full ${t.type === 'income' ? 'bg-emerald-100 text-emerald-600' : 'bg-pink-100 text-pink-600'}`}>
+                      {t.type === 'income' ? 'Pemasukan' : 'Pengeluaran'}
+                    </span>
+                    <span className={`hidden sm:inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${t.walletType === 'bank' ? 'bg-blue-100 text-blue-600' : 'bg-amber-100 text-amber-600'}`}>
+                      {t.walletType === 'bank' ? <CreditCard size={10} /> : <Banknote size={10} />}
+                      {t.walletType === 'bank' ? 'Bank/E-Wallet' : 'Cash'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-400 truncate">{t.note || '—'} · {formatDate(t.date)}</p>
+                </div>
+                <span className={`text-sm font-bold flex-shrink-0 ${t.type === 'income' ? 'text-emerald-500' : 'text-pink-500'}`}>
+                  {t.type === 'income' ? '+' : '-'}{formatRupiah(t.amount)}
+                </span>
+
+                {/* Action buttons (non-bulk mode) */}
+                {!bulkMode && (
+                  <div className="flex gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
+                    <button onClick={() => setViewTx(t)} className="hidden sm:flex p-2 rounded-lg hover:bg-violet-50 text-violet-400">
+                      <Eye size={15} />
+                    </button>
+                    <button onClick={() => setEditTx(t)} className="p-2 rounded-lg hover:bg-pink-50 text-pink-400"><Pencil size={15} /></button>
+                    <button onClick={() => handleDelete(t.id)} className="p-2 rounded-lg hover:bg-red-50 text-red-400"><Trash2 size={15} /></button>
+                  </div>
+                )}
+              </motion.div>
+            );
+          })}
         </div>
       )}
 
@@ -200,6 +345,8 @@ export default function TransactionsPage() {
       <Modal open={!!editTx} onClose={() => setEditTx(null)} title="Edit Transaksi">
         {editTx && <TransactionForm onSubmit={handleEdit} onClose={() => setEditTx(null)} initial={editTx} categories={categories} />}
       </Modal>
+
+      <TransactionReceipt transaction={viewTx} categories={categories} onClose={() => setViewTx(null)} />
     </div>
   );
 }

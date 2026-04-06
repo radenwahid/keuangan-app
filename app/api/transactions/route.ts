@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
   try {
     const user = await requireAuth();
     const body = await req.json();
-    const { type, amount, category, note, date } = body;
+    const { type, amount, category, note, date, walletType } = body;
 
     if (!type || !amount || !category || !date) {
       return NextResponse.json({ error: 'Field tidak lengkap' }, { status: 400 });
@@ -50,6 +50,7 @@ export async function POST(req: NextRequest) {
       category,
       note: note || '',
       date,
+      walletType: walletType || 'cash',
       createdAt: new Date().toISOString(),
     };
     txs.push(newTx);

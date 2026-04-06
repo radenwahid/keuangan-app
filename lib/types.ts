@@ -7,6 +7,8 @@ export interface User {
   createdAt: string;
 }
 
+export type WalletType = 'cash' | 'bank';
+
 export interface Transaction {
   id: string;
   userId: string;
@@ -15,6 +17,7 @@ export interface Transaction {
   category: string;
   note: string;
   date: string;
+  walletType: WalletType;
   createdAt: string;
 }
 
