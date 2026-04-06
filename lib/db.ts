@@ -1,8 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 
-// Upstash inject: UPSTASH_REDIS_REST_URL dan UPSTASH_REDIS_REST_TOKEN
-const isVercel = !!process.env.UPSTASH_REDIS_REST_URL;
+// Upstash inject nama env yang sama dengan Vercel KV lama
+const isVercel = !!process.env.KV_REST_API_URL;
 
 // ── LOCAL ────────────────────────────────────────────────────
 const DATA_DIR = path.join(process.cwd(), 'data');
@@ -35,8 +35,8 @@ function kvKey(filename: string): string {
 async function getRedis() {
   const { Redis } = await import('@upstash/redis');
   return new Redis({
-    url: process.env.UPSTASH_REDIS_REST_URL!,
-    token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+    url: process.env.KV_REST_API_URL!,
+    token: process.env.KV_REST_API_TOKEN!,
   });
 }
 
