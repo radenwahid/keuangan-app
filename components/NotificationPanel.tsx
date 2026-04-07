@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, Trash2, X, CheckCircle2, TrendingUp, TrendingDown, Info } from 'lucide-react';
+import { Bell, Trash2, X, CheckCircle2, TrendingUp, TrendingDown, Info, ArrowLeftRight } from 'lucide-react';
 import { Notification } from '@/lib/types';
 
 function timeAgo(dateStr: string) {
@@ -62,6 +62,8 @@ export default function NotificationPanel() {
 
   function NotifIcon({ type, title }: { type: Notification['type']; title: string }) {
     if (type === 'transaction') {
+      if (title.toLowerCase().includes('transfer'))
+        return <div className="w-9 h-9 rounded-full bg-violet-100 flex items-center justify-center flex-shrink-0"><ArrowLeftRight size={16} className="text-violet-500" /></div>;
       if (title.toLowerCase().includes('pemasukan'))
         return <div className="w-9 h-9 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0"><TrendingUp size={16} className="text-emerald-500" /></div>;
       return <div className="w-9 h-9 rounded-full bg-pink-100 flex items-center justify-center flex-shrink-0"><TrendingDown size={16} className="text-pink-500" /></div>;

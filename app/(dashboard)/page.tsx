@@ -49,12 +49,16 @@ export default function DashboardPage() {
   const totalExpense = txs.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
   const balance = totalIncome - totalExpense;
 
+  // Saldo wallet kumulatif dari semua riwayat (termasuk transfer)
+  const { data: walletBalances } = useFetch<{ cash: number; bank: number }>('/api/transactions/balance', { ttl: 60_000 });
+  const cashBalance = walletBalances?.cash ?? 0;
+  const bankBalance = walletBalances?.bank ?? 0;
+
+  // Pemasukan/pengeluaran per wallet bulan ini (untuk info +/-)
   const cashIncome = txs.filter(t => t.type === 'income' && t.walletType === 'cash').reduce((s, t) => s + t.amount, 0);
   const cashExpense = txs.filter(t => t.type === 'expense' && t.walletType === 'cash').reduce((s, t) => s + t.amount, 0);
   const bankIncome = txs.filter(t => t.type === 'income' && t.walletType === 'bank').reduce((s, t) => s + t.amount, 0);
   const bankExpense = txs.filter(t => t.type === 'expense' && t.walletType === 'bank').reduce((s, t) => s + t.amount, 0);
-  const cashBalance = cashIncome - cashExpense;
-  const bankBalance = bankIncome - bankExpense;
 
   const dailyMap: Record<string, { income: number; expense: number }> = {};
   txs.forEach(t => {
@@ -255,7 +259,7 @@ export default function DashboardPage() {
       <Modal open={showTransfer} onClose={() => setShowTransfer(false)} title="Transfer Saldo">
         <TransferForm
           onClose={() => setShowTransfer(false)}
-          onSuccess={() => { setShowTransfer(false); showToast('Transfer berhasil dicatat'); refreshTx(txUrl); }}
+          onSuccess={() => { setShowTransfer(false); showToast('Transfer berhasil dicatat'); refreshTx(txUrl); refreshTx('/api/transactions/balance'); }}
         />
       </Modal>
     </div>

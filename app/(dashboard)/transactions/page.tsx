@@ -28,6 +28,7 @@ export default function TransactionsPage() {
   const [year, setYear] = useState(now.getFullYear());
   const [showModal, setShowModal] = useState(false);
   const [editTx, setEditTx] = useState<Transaction | null>(null);
+  const [editTransfer, setEditTransfer] = useState<Transaction | null>(null);
   const [viewTx, setViewTx] = useState<Transaction | null>(null);
   const [showTransfer, setShowTransfer] = useState(false);
   const [filterType, setFilterType] = useState('');
@@ -107,9 +108,13 @@ export default function TransactionsPage() {
   function getExportData(source: Transaction[]) {
     return source.map(t => ({
       Tanggal: formatDate(t.date),
-      Tipe: t.type === 'income' ? 'Pemasukan' : 'Pengeluaran',
-      Kategori: t.category,
-      Dompet: t.walletType === 'bank' ? 'Bank/E-Wallet' : 'Cash',
+      Tipe: t.type === 'income' ? 'Pemasukan' : t.type === 'transfer' ? 'Transfer' : 'Pengeluaran',
+      Kategori: t.type === 'transfer'
+        ? `${t.walletType === 'cash' ? 'Cash' : 'Bank/E-Wallet'} → ${t.toWalletType === 'cash' ? 'Cash' : 'Bank/E-Wallet'}`
+        : t.category,
+      Dompet: t.type === 'transfer'
+        ? `${t.walletType === 'cash' ? 'Cash' : 'Bank/E-Wallet'} → ${t.toWalletType === 'cash' ? 'Cash' : 'Bank/E-Wallet'}`
+        : t.walletType === 'bank' ? 'Bank/E-Wallet' : 'Cash',
       Catatan: t.note,
       Nominal: t.amount,
     }));
@@ -124,7 +129,18 @@ export default function TransactionsPage() {
     autoTable(doc, {
       startY: 30,
       head: [['Tanggal', 'Tipe', 'Kategori', 'Dompet', 'Catatan', 'Nominal']],
-      body: source.map(t => [formatDate(t.date), t.type === 'income' ? 'Pemasukan' : 'Pengeluaran', t.category, t.walletType === 'bank' ? 'Bank/E-Wallet' : 'Cash', t.note, formatRupiah(t.amount)]),
+      body: source.map(t => [
+        formatDate(t.date),
+        t.type === 'income' ? 'Pemasukan' : t.type === 'transfer' ? 'Transfer' : 'Pengeluaran',
+        t.type === 'transfer'
+          ? `${t.walletType === 'cash' ? 'Cash' : 'Bank/E-Wallet'} → ${t.toWalletType === 'cash' ? 'Cash' : 'Bank/E-Wallet'}`
+          : t.category,
+        t.type === 'transfer'
+          ? `${t.walletType === 'cash' ? 'Cash' : 'Bank/E-Wallet'} → ${t.toWalletType === 'cash' ? 'Cash' : 'Bank/E-Wallet'}`
+          : t.walletType === 'bank' ? 'Bank/E-Wallet' : 'Cash',
+        t.note,
+        formatRupiah(t.amount),
+      ]),
       styles: { fontSize: 9 },
       headStyles: { fillColor: [236, 72, 153] },
     });
@@ -186,6 +202,7 @@ export default function TransactionsPage() {
           <option value="">Semua Tipe</option>
           <option value="income">Pemasukan</option>
           <option value="expense">Pengeluaran</option>
+          <option value="transfer">Transfer</option>
         </select>
         <select value={filterCat} onChange={e => { setFilterCat(e.target.value); setPage(1); }}
           className="px-3 py-2 rounded-xl border border-pink-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-pink-300">
@@ -292,7 +309,7 @@ export default function TransactionsPage() {
                 {!bulkMode && (
                   <div className="flex gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
                     <button onClick={() => setViewTx(t)} className="hidden sm:flex p-2 rounded-lg hover:bg-violet-50 text-violet-400"><Eye size={15} /></button>
-                    <button onClick={() => setEditTx(t)} className="p-2 rounded-lg hover:bg-pink-50 text-pink-400"><Pencil size={15} /></button>
+                    <button onClick={() => t.type === 'transfer' ? setEditTransfer(t) : setEditTx(t)} className="p-2 rounded-lg hover:bg-pink-50 text-pink-400"><Pencil size={15} /></button>
                     <button onClick={() => handleDelete(t.id)} className="p-2 rounded-lg hover:bg-red-50 text-red-400"><Trash2 size={15} /></button>
                   </div>
                 )}
@@ -324,6 +341,15 @@ export default function TransactionsPage() {
           onClose={() => setShowTransfer(false)}
           onSuccess={() => { setShowTransfer(false); showToast('Transfer berhasil dicatat'); invalidateAndRefresh(); }}
         />
+      </Modal>
+      <Modal open={!!editTransfer} onClose={() => setEditTransfer(null)} title="Edit Transfer">
+        {editTransfer && (
+          <TransferForm
+            initial={editTransfer}
+            onClose={() => setEditTransfer(null)}
+            onSuccess={() => { setEditTransfer(null); showToast('Transfer diperbarui'); invalidateAndRefresh(); }}
+          />
+        )}
       </Modal>
       <TransactionReceipt transaction={viewTx} categories={cats} onClose={() => setViewTx(null)} />
     </div>

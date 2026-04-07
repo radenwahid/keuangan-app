@@ -1,12 +1,13 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { Banknote, CreditCard, ArrowRight, AlertCircle, ArrowLeftRight } from 'lucide-react';
-import { WalletType } from '@/lib/types';
+import { Transaction, WalletType } from '@/lib/types';
 import { formatRupiah } from '@/lib/utils';
 
 interface Props {
   onClose: () => void;
   onSuccess: () => void;
+  initial?: Transaction; // ada = mode edit
 }
 
 const WALLET_OPTIONS: { value: WalletType; label: string; icon: React.ReactNode }[] = [
@@ -14,25 +15,34 @@ const WALLET_OPTIONS: { value: WalletType; label: string; icon: React.ReactNode 
   { value: 'bank', label: 'Bank / E-Wallet', icon: <CreditCard size={16} /> },
 ];
 
-export default function TransferForm({ onClose, onSuccess }: Props) {
-  const [from, setFrom] = useState<WalletType>('cash');
-  const [to, setTo] = useState<WalletType>('bank');
-  const [amount, setAmount] = useState('');
-  const [note, setNote] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+export default function TransferForm({ onClose, onSuccess, initial }: Props) {
+  const isEdit = !!initial;
+
+  const [from, setFrom] = useState<WalletType>(initial?.walletType ?? 'cash');
+  const [to, setTo] = useState<WalletType>(initial?.toWalletType ?? 'bank');
+  const [amount, setAmount] = useState(initial?.amount?.toString() ?? '');
+  const [note, setNote] = useState(initial?.note ?? '');
+  const [date, setDate] = useState(initial?.date ?? new Date().toISOString().slice(0, 10));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [balances, setBalances] = useState<{ cash: number; bank: number } | null>(null);
+  const [balanceLoading, setBalanceLoading] = useState(true);
 
-  // Fetch saldo dari API
   useEffect(() => {
+    setBalanceLoading(true);
     fetch('/api/transactions/balance')
       .then(r => r.ok ? r.json() : null)
-      .then(d => d && setBalances(d))
-      .catch(() => {});
+      .then(d => { if (d) setBalances(d); })
+      .catch(() => {})
+      .finally(() => setBalanceLoading(false));
   }, []);
 
-  const fromBalance = balances ? balances[from] : null;
+  // Saat edit, saldo "tersedia" = saldo sekarang + nominal lama (karena nanti akan dikurangi lagi)
+  const rawFromBalance = balances ? balances[from] : null;
+  const fromBalance = rawFromBalance !== null
+    ? (isEdit && initial?.walletType === from ? rawFromBalance + (initial?.amount ?? 0) : rawFromBalance)
+    : null;
+
   const amountNum = Number(amount);
   const isInsufficient = fromBalance !== null && amountNum > 0 && amountNum > fromBalance;
 
@@ -41,10 +51,17 @@ export default function TransferForm({ onClose, onSuccess }: Props) {
     if (from === to) { setError('Dompet asal dan tujuan tidak boleh sama'); return; }
     setError('');
     setLoading(true);
-    const res = await fetch('/api/transactions/transfer', {
-      method: 'POST',
+
+    const url = isEdit ? `/api/transactions/${initial!.id}` : '/api/transactions/transfer';
+    const method = isEdit ? 'PUT' : 'POST';
+    const body = isEdit
+      ? { type: 'transfer', amount: amountNum, walletType: from, toWalletType: to, note, date, category: 'Transfer' }
+      : { amount: amountNum, fromWallet: from, toWallet: to, note, date };
+
+    const res = await fetch(url, {
+      method,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amount: amountNum, fromWallet: from, toWallet: to, note, date }),
+      body: JSON.stringify(body),
     });
     setLoading(false);
     if (res.ok) onSuccess();
@@ -95,10 +112,14 @@ export default function TransferForm({ onClose, onSuccess }: Props) {
           <ArrowRight size={14} className="text-pink-400" />
           <span className="font-medium">{to === 'cash' ? 'Cash' : 'Bank/E-Wallet'}</span>
         </div>
-        {fromBalance !== null && (
+        {balanceLoading ? (
+          <p className="text-xs text-center text-gray-400 animate-pulse">Memuat saldo...</p>
+        ) : fromBalance !== null ? (
           <p className={`text-xs text-center font-medium ${isInsufficient ? 'text-red-500' : 'text-gray-400'}`}>
             Saldo {from === 'cash' ? 'Cash' : 'Bank/E-Wallet'} tersedia: {formatRupiah(fromBalance)}
           </p>
+        ) : (
+          <p className="text-xs text-center text-gray-400">Saldo tidak tersedia</p>
         )}
       </div>
 
@@ -109,9 +130,7 @@ export default function TransferForm({ onClose, onSuccess }: Props) {
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-pink-400 text-sm">Rp</span>
           <input type="number" value={amount} onChange={e => { setAmount(e.target.value); setError(''); }} required min="1"
             className={`w-full pl-10 pr-4 py-2.5 rounded-xl border focus:outline-none focus:ring-2 text-sm transition-colors ${
-              isInsufficient
-                ? 'border-red-300 focus:ring-red-200 bg-red-50'
-                : 'border-pink-200 focus:ring-pink-300'
+              isInsufficient ? 'border-red-300 focus:ring-red-200 bg-red-50' : 'border-pink-200 focus:ring-pink-300'
             }`}
             placeholder="0" />
         </div>
@@ -151,8 +170,8 @@ export default function TransferForm({ onClose, onSuccess }: Props) {
           Batal
         </button>
         <button type="submit" disabled={loading || from === to || isInsufficient}
-          className="flex-1 py-2.5 rounded-full bg-gradient-to-r from-pink-500 to-fuchsia-500 text-white text-sm font-medium shadow-md shadow-pink-200 disabled:opacity-60">
-          {loading ? 'Menyimpan...' : 'Transfer'}
+          className="flex-1 py-2.5 rounded-full bg-gradient-to-r from-violet-500 to-purple-500 text-white text-sm font-medium shadow-md shadow-violet-200 disabled:opacity-60">
+          {loading ? 'Menyimpan...' : isEdit ? 'Simpan Perubahan' : 'Transfer'}
         </button>
       </div>
     </form>

@@ -13,7 +13,9 @@ interface Props {
 }
 
 export default function TransactionForm({ onSubmit, onClose, initial, categories, templates = [] }: Props) {
-  const [type, setType] = useState<'income' | 'expense'>(initial?.type || 'expense');
+  const [type, setType] = useState<'income' | 'expense'>(
+    (initial?.type === 'income' || initial?.type === 'expense') ? initial.type : 'expense'
+  );
   const [walletType, setWalletType] = useState<WalletType>(initial?.walletType || 'cash');
   const [amount, setAmount] = useState(initial?.amount?.toString() || '');
   const [category, setCategory] = useState(initial?.category || '');

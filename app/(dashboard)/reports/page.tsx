@@ -47,7 +47,15 @@ export default function ReportsPage() {
     autoTable(doc, {
       startY: 70,
       head: [['Tanggal','Tipe','Kategori','Catatan','Nominal']],
-      body: data.transactions.map(t => [formatDate(t.date), t.type==='income'?'Pemasukan':'Pengeluaran', t.category, t.note, formatRupiah(t.amount)]),
+      body: data.transactions.map(t => [
+        formatDate(t.date),
+        t.type === 'income' ? 'Pemasukan' : t.type === 'transfer' ? 'Transfer' : 'Pengeluaran',
+        t.type === 'transfer'
+          ? `${t.walletType === 'cash' ? 'Cash' : 'Bank/E-Wallet'} → ${t.toWalletType === 'cash' ? 'Cash' : 'Bank/E-Wallet'}`
+          : t.category,
+        t.note,
+        formatRupiah(t.amount),
+      ]),
       styles: { fontSize: 9 }, headStyles: { fillColor: [236,72,153] },
     });
     doc.save(`laporan-${month}-${year}.pdf`);
@@ -61,7 +69,15 @@ export default function ReportsPage() {
       { '': 'Total Pengeluaran', Nominal: data.totalExpense },
       { '': 'Saldo Bersih', Nominal: data.balance },
       {},
-      ...data.transactions.map(t => ({ Tanggal: formatDate(t.date), Tipe: t.type==='income'?'Pemasukan':'Pengeluaran', Kategori: t.category, Catatan: t.note, Nominal: t.amount })),
+      ...data.transactions.map(t => ({
+        Tanggal: formatDate(t.date),
+        Tipe: t.type === 'income' ? 'Pemasukan' : t.type === 'transfer' ? 'Transfer' : 'Pengeluaran',
+        Kategori: t.type === 'transfer'
+          ? `${t.walletType === 'cash' ? 'Cash' : 'Bank/E-Wallet'} → ${t.toWalletType === 'cash' ? 'Cash' : 'Bank/E-Wallet'}`
+          : t.category,
+        Catatan: t.note,
+        Nominal: t.amount,
+      })),
     ]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Laporan');
@@ -170,14 +186,26 @@ export default function ReportsPage() {
                       <tr key={t.id} className={i % 2 === 0 ? 'bg-white' : 'bg-pink-50/30'}>
                         <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{formatDate(t.date)}</td>
                         <td className="px-4 py-3">
-                          <span className={`text-xs px-2 py-0.5 rounded-full ${t.type==='income'?'bg-emerald-100 text-emerald-600':'bg-pink-100 text-pink-600'}`}>
-                            {t.type==='income'?'Pemasukan':'Pengeluaran'}
+                          <span className={`text-xs px-2 py-0.5 rounded-full ${
+                            t.type === 'income' ? 'bg-emerald-100 text-emerald-600'
+                            : t.type === 'transfer' ? 'bg-violet-100 text-violet-600'
+                            : 'bg-pink-100 text-pink-600'
+                          }`}>
+                            {t.type === 'income' ? 'Pemasukan' : t.type === 'transfer' ? 'Transfer' : 'Pengeluaran'}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-gray-600">{t.category}</td>
+                        <td className="px-4 py-3 text-gray-600">
+                          {t.type === 'transfer'
+                            ? `${t.walletType === 'cash' ? 'Cash' : 'Bank/E-Wallet'} → ${t.toWalletType === 'cash' ? 'Cash' : 'Bank/E-Wallet'}`
+                            : t.category}
+                        </td>
                         <td className="px-4 py-3 text-gray-400 max-w-[200px] truncate">{t.note||'—'}</td>
-                        <td className={`px-4 py-3 font-semibold ${t.type==='income'?'text-emerald-500':'text-pink-500'}`}>
-                          {hidden ? 'Rp *****' : `${t.type==='income'?'+':'-'}${formatRupiah(t.amount)}`}
+                        <td className={`px-4 py-3 font-semibold ${
+                          t.type === 'income' ? 'text-emerald-500'
+                          : t.type === 'transfer' ? 'text-violet-500'
+                          : 'text-pink-500'
+                        }`}>
+                          {hidden ? 'Rp *****' : `${t.type === 'income' ? '+' : t.type === 'transfer' ? '⇄ ' : '-'}${formatRupiah(t.amount)}`}
                         </td>
                       </tr>
                     ))}
