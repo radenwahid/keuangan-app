@@ -18,6 +18,29 @@ export async function POST(req: NextRequest) {
     }
 
     const txs = await readJSONAsync<Transaction>('transactions.json');
+    const userTxs = txs.filter(t => t.userId === user.userId);
+
+    // Hitung saldo dompet asal
+    const walletBalance = userTxs.reduce((bal, t) => {
+      if (t.type === 'income' && t.walletType === fromWallet) return bal + t.amount;
+      if (t.type === 'expense' && t.walletType === fromWallet) return bal - t.amount;
+      // transfer keluar dari wallet ini
+      if (t.type === 'transfer' && t.walletType === fromWallet) return bal - t.amount;
+      // transfer masuk ke wallet ini
+      if (t.type === 'transfer' && t.toWalletType === fromWallet) return bal + t.amount;
+      return bal;
+    }, 0);
+
+    if (walletBalance < Number(amount)) {
+      const fmt = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 });
+      const fromLabel = fromWallet === 'cash' ? 'Cash' : 'Bank/E-Wallet';
+      return NextResponse.json({
+        error: `Saldo ${fromLabel} tidak mencukupi. Saldo tersedia: ${fmt.format(walletBalance)}, dibutuhkan: ${fmt.format(Number(amount))}.`,
+        code: 'INSUFFICIENT_BALANCE',
+        available: walletBalance,
+      }, { status: 422 });
+    }
+
     const newTx: Transaction = {
       id: generateId(),
       userId: user.userId,
