@@ -4,12 +4,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus, Pencil, Trash2, ChevronLeft, ChevronRight,
   Download, FileSpreadsheet, CreditCard, Banknote, Eye,
-  CheckSquare, Square, X,
+  CheckSquare, Square, X, ArrowLeftRight,
 } from 'lucide-react';
 import { Transaction, Category, Template } from '@/lib/types';
 import { formatRupiah, formatDate } from '@/lib/utils';
 import Modal from '@/components/Modal';
 import TransactionForm from '@/components/TransactionForm';
+import TransferForm from '@/components/TransferForm';
 import TransactionReceipt from '@/components/TransactionReceipt';
 import CategoryIcon from '@/components/CategoryIcon';
 import { SkeletonList } from '@/components/Skeleton';
@@ -28,6 +29,7 @@ export default function TransactionsPage() {
   const [showModal, setShowModal] = useState(false);
   const [editTx, setEditTx] = useState<Transaction | null>(null);
   const [viewTx, setViewTx] = useState<Transaction | null>(null);
+  const [showTransfer, setShowTransfer] = useState(false);
   const [filterType, setFilterType] = useState('');
   const [filterCat, setFilterCat] = useState('');
   const [filterWallet, setFilterWallet] = useState('');
@@ -166,6 +168,10 @@ export default function TransactionsPage() {
             className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-sm shadow-sm transition-all ${bulkMode ? 'bg-violet-500 border-violet-500 text-white' : 'bg-white border-pink-100 text-violet-500 hover:bg-violet-50'}`}>
             <CheckSquare size={15} /> Pilih
           </button>
+          <button onClick={() => setShowTransfer(true)}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-gradient-to-r from-violet-500 to-purple-500 text-white text-sm shadow-md shadow-violet-200">
+            <ArrowLeftRight size={16} /> Transfer
+          </button>
           <button onClick={() => setShowModal(true)}
             className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-gradient-to-r from-pink-500 to-fuchsia-500 text-white text-sm shadow-md shadow-pink-200">
             <Plus size={16} /> Tambah
@@ -251,25 +257,37 @@ export default function TransactionsPage() {
                     {isSelected ? <CheckSquare size={20} /> : <Square size={20} className="text-gray-300" />}
                   </div>
                 )}
-                <div className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
-                  style={{ backgroundColor: getCategoryColor(t.category) + '20' }}>
-                  <CategoryIcon icon={getCategoryIcon(t.category)} size={18} style={{ color: getCategoryColor(t.category) }} />
+                <div className={`w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 ${t.type === 'transfer' ? 'bg-violet-100' : ''}`}
+                  style={t.type !== 'transfer' ? { backgroundColor: getCategoryColor(t.category) + '20' } : {}}>
+                  {t.type === 'transfer'
+                    ? <ArrowLeftRight size={18} className="text-violet-500" />
+                    : <CategoryIcon icon={getCategoryIcon(t.category)} size={18} style={{ color: getCategoryColor(t.category) }} />
+                  }
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-sm font-semibold text-gray-700">{t.category}</p>
-                    <span className={`hidden sm:inline-flex text-xs px-2 py-0.5 rounded-full ${t.type === 'income' ? 'bg-emerald-100 text-emerald-600' : 'bg-pink-100 text-pink-600'}`}>
-                      {t.type === 'income' ? 'Pemasukan' : 'Pengeluaran'}
+                    <p className="text-sm font-semibold text-gray-700">
+                      {t.type === 'transfer'
+                        ? `${t.walletType === 'cash' ? 'Cash' : 'Bank/E-Wallet'} → ${t.toWalletType === 'cash' ? 'Cash' : 'Bank/E-Wallet'}`
+                        : t.category}
+                    </p>
+                    <span className={`hidden sm:inline-flex text-xs px-2 py-0.5 rounded-full ${
+                      t.type === 'income' ? 'bg-emerald-100 text-emerald-600'
+                      : t.type === 'transfer' ? 'bg-violet-100 text-violet-600'
+                      : 'bg-pink-100 text-pink-600'}`}>
+                      {t.type === 'income' ? 'Pemasukan' : t.type === 'transfer' ? 'Transfer' : 'Pengeluaran'}
                     </span>
-                    <span className={`hidden sm:inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${t.walletType === 'bank' ? 'bg-blue-100 text-blue-600' : 'bg-amber-100 text-amber-600'}`}>
-                      {t.walletType === 'bank' ? <CreditCard size={10} /> : <Banknote size={10} />}
-                      {t.walletType === 'bank' ? 'Bank/E-Wallet' : 'Cash'}
-                    </span>
+                    {t.type !== 'transfer' && (
+                      <span className={`hidden sm:inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${t.walletType === 'bank' ? 'bg-blue-100 text-blue-600' : 'bg-amber-100 text-amber-600'}`}>
+                        {t.walletType === 'bank' ? <CreditCard size={10} /> : <Banknote size={10} />}
+                        {t.walletType === 'bank' ? 'Bank/E-Wallet' : 'Cash'}
+                      </span>
+                    )}
                   </div>
                   <p className="text-xs text-gray-400 truncate">{t.note || '—'} · {formatDate(t.date)}</p>
                 </div>
-                <span className={`text-sm font-bold flex-shrink-0 ${t.type === 'income' ? 'text-emerald-500' : 'text-pink-500'}`}>
-                  {hidden ? 'Rp *****' : `${t.type === 'income' ? '+' : '-'}${formatRupiah(t.amount)}`}
+                <span className={`text-sm font-bold flex-shrink-0 ${t.type === 'income' ? 'text-emerald-500' : t.type === 'transfer' ? 'text-violet-500' : 'text-pink-500'}`}>
+                  {hidden ? 'Rp *****' : `${t.type === 'income' ? '+' : t.type === 'transfer' ? '⇄ ' : '-'}${formatRupiah(t.amount)}`}
                 </span>
                 {!bulkMode && (
                   <div className="flex gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
@@ -300,6 +318,12 @@ export default function TransactionsPage() {
       </Modal>
       <Modal open={!!editTx} onClose={() => setEditTx(null)} title="Edit Transaksi">
         {editTx && <TransactionForm onSubmit={handleEdit} onClose={() => setEditTx(null)} initial={editTx} categories={cats} />}
+      </Modal>
+      <Modal open={showTransfer} onClose={() => setShowTransfer(false)} title="Transfer Saldo">
+        <TransferForm
+          onClose={() => setShowTransfer(false)}
+          onSuccess={() => { setShowTransfer(false); showToast('Transfer berhasil dicatat'); invalidateAndRefresh(); }}
+        />
       </Modal>
       <TransactionReceipt transaction={viewTx} categories={cats} onClose={() => setViewTx(null)} />
     </div>

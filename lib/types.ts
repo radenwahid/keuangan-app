@@ -13,12 +13,13 @@ export type WalletType = 'cash' | 'bank';
 export interface Transaction {
   id: string;
   userId: string;
-  type: 'income' | 'expense';
+  type: 'income' | 'expense' | 'transfer';
   amount: number;
   category: string;
   note: string;
   date: string;
   walletType: WalletType;
+  toWalletType?: WalletType; // hanya untuk type === 'transfer'
   createdAt: string;
 }
 

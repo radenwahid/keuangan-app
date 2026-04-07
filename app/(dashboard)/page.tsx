@@ -1,7 +1,7 @@
 'use client';
 import { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Plus, TrendingUp, TrendingDown, Wallet, Banknote, CreditCard } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, TrendingUp, TrendingDown, Wallet, Banknote, CreditCard, ArrowLeftRight } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
@@ -10,6 +10,7 @@ import { formatRupiah, formatDate } from '@/lib/utils';
 import { Transaction, Category } from '@/lib/types';
 import Modal from '@/components/Modal';
 import TransactionForm from '@/components/TransactionForm';
+import TransferForm from '@/components/TransferForm';
 import CategoryIcon from '@/components/CategoryIcon';
 import { SkeletonCard, SkeletonList } from '@/components/Skeleton';
 import { useToast } from '@/components/Toast';
@@ -23,6 +24,7 @@ export default function DashboardPage() {
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
   const [showModal, setShowModal] = useState(false);
+  const [showTransfer, setShowTransfer] = useState(false);
   const { showToast } = useToast();
   const { hidden } = useBalance();
 
@@ -201,15 +203,23 @@ export default function DashboardPage() {
             {recent.map((t, i) => (
               <motion.div key={t.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
                 className="flex items-center gap-3 p-3 rounded-xl hover:bg-pink-50 transition-colors">
-                <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: getCategoryColor(t.category) + '20' }}>
-                  <CategoryIcon icon={getCategoryIcon(t.category)} size={16} style={{ color: getCategoryColor(t.category) }} />
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${t.type === 'transfer' ? 'bg-violet-100' : ''}`}
+                  style={t.type !== 'transfer' ? { backgroundColor: getCategoryColor(t.category) + '20' } : {}}>
+                  {t.type === 'transfer'
+                    ? <ArrowLeftRight size={16} className="text-violet-500" />
+                    : <CategoryIcon icon={getCategoryIcon(t.category)} size={16} style={{ color: getCategoryColor(t.category) }} />
+                  }
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-700 truncate">{t.category}</p>
+                  <p className="text-sm font-medium text-gray-700 truncate">
+                    {t.type === 'transfer'
+                      ? `${t.walletType === 'cash' ? 'Cash' : 'Bank/E-Wallet'} → ${t.toWalletType === 'cash' ? 'Cash' : 'Bank/E-Wallet'}`
+                      : t.category}
+                  </p>
                   <p className="text-xs text-gray-400 truncate">{t.note || formatDate(t.date)}</p>
                 </div>
-                <span className={`text-sm font-semibold ${t.type === 'income' ? 'text-emerald-500' : 'text-pink-500'}`}>
-                  {hidden ? 'Rp *****' : `${t.type === 'income' ? '+' : '-'}${formatRupiah(t.amount)}`}
+                <span className={`text-sm font-semibold ${t.type === 'income' ? 'text-emerald-500' : t.type === 'transfer' ? 'text-violet-500' : 'text-pink-500'}`}>
+                  {hidden ? 'Rp *****' : `${t.type === 'income' ? '+' : t.type === 'transfer' ? '⇄' : '-'}${formatRupiah(t.amount)}`}
                 </span>
               </motion.div>
             ))}
@@ -218,19 +228,35 @@ export default function DashboardPage() {
       </motion.div>
 
       {/* FAB */}
-      <motion.button
-        onClick={() => setShowModal(true)}
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.95 }}
-        animate={{ y: [0, -4, 0] }}
-        transition={{ repeat: Infinity, duration: 2 }}
-        className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-gradient-to-br from-pink-500 to-fuchsia-500 text-white shadow-lg shadow-pink-300 flex items-center justify-center z-40"
-      >
-        <Plus size={24} />
-      </motion.button>
+      <div className="fixed bottom-6 right-6 flex flex-col items-end gap-3 z-40">
+        <motion.button
+          onClick={() => setShowTransfer(true)}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          className="flex items-center gap-2 px-4 py-3 rounded-full bg-white border border-violet-200 text-violet-600 text-sm font-medium shadow-md shadow-violet-100"
+        >
+          <ArrowLeftRight size={16} /> Transfer
+        </motion.button>
+        <motion.button
+          onClick={() => setShowModal(true)}
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.95 }}
+          animate={{ y: [0, -4, 0] }}
+          transition={{ repeat: Infinity, duration: 2 }}
+          className="w-14 h-14 rounded-full bg-gradient-to-br from-pink-500 to-fuchsia-500 text-white shadow-lg shadow-pink-300 flex items-center justify-center"
+        >
+          <Plus size={24} />
+        </motion.button>
+      </div>
 
       <Modal open={showModal} onClose={() => setShowModal(false)} title="Tambah Transaksi">
         <TransactionForm onSubmit={handleAddTransaction} onClose={() => setShowModal(false)} categories={cats} />
+      </Modal>
+      <Modal open={showTransfer} onClose={() => setShowTransfer(false)} title="Transfer Saldo">
+        <TransferForm
+          onClose={() => setShowTransfer(false)}
+          onSuccess={() => { setShowTransfer(false); showToast('Transfer berhasil dicatat'); refreshTx(txUrl); }}
+        />
       </Modal>
     </div>
   );
