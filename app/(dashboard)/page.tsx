@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Plus, TrendingUp, TrendingDown, Wallet, Banknote, CreditCard } from 'lucide-react';
 import {
@@ -13,6 +13,8 @@ import TransactionForm from '@/components/TransactionForm';
 import CategoryIcon from '@/components/CategoryIcon';
 import { SkeletonCard, SkeletonList } from '@/components/Skeleton';
 import { useToast } from '@/components/Toast';
+import { useFetch } from '@/lib/useFetch';
+import { useBalance } from '@/components/DashboardShell';
 
 const MONTHS = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 
@@ -20,24 +22,17 @@ export default function DashboardPage() {
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const { showToast } = useToast();
+  const { hidden } = useBalance();
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    const [txRes, catRes] = await Promise.all([
-      fetch(`/api/transactions?month=${month}&year=${year}`),
-      fetch('/api/categories'),
-    ]);
-    setTransactions(await txRes.json());
-    setCategories(await catRes.json());
-    setLoading(false);
-  }, [month, year]);
+  const txUrl = `/api/transactions?month=${month}&year=${year}`;
+  const { data: transactions, loading: txLoading, refresh: refreshTx } = useFetch<Transaction[]>(txUrl, { ttl: 60_000 });
+  const { data: categories, loading: catLoading, refresh: refreshCat } = useFetch<Category[]>('/api/categories', { ttl: 300_000 });
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  const loading = txLoading || catLoading;
+  const txs = transactions ?? [];
+  const cats = categories ?? [];
 
   function prevMonth() {
     if (month === 1) { setMonth(12); setYear(y => y - 1); }
@@ -48,21 +43,19 @@ export default function DashboardPage() {
     else setMonth(m => m + 1);
   }
 
-  const totalIncome = transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-  const totalExpense = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+  const totalIncome = txs.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+  const totalExpense = txs.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
   const balance = totalIncome - totalExpense;
 
-  // Wallet balances (all-time from current month filtered data — use all transactions for balance)
-  const cashIncome = transactions.filter(t => t.type === 'income' && t.walletType === 'cash').reduce((s, t) => s + t.amount, 0);
-  const cashExpense = transactions.filter(t => t.type === 'expense' && t.walletType === 'cash').reduce((s, t) => s + t.amount, 0);
-  const bankIncome = transactions.filter(t => t.type === 'income' && t.walletType === 'bank').reduce((s, t) => s + t.amount, 0);
-  const bankExpense = transactions.filter(t => t.type === 'expense' && t.walletType === 'bank').reduce((s, t) => s + t.amount, 0);
+  const cashIncome = txs.filter(t => t.type === 'income' && t.walletType === 'cash').reduce((s, t) => s + t.amount, 0);
+  const cashExpense = txs.filter(t => t.type === 'expense' && t.walletType === 'cash').reduce((s, t) => s + t.amount, 0);
+  const bankIncome = txs.filter(t => t.type === 'income' && t.walletType === 'bank').reduce((s, t) => s + t.amount, 0);
+  const bankExpense = txs.filter(t => t.type === 'expense' && t.walletType === 'bank').reduce((s, t) => s + t.amount, 0);
   const cashBalance = cashIncome - cashExpense;
   const bankBalance = bankIncome - bankExpense;
 
-  // Daily chart data
   const dailyMap: Record<string, { income: number; expense: number }> = {};
-  transactions.forEach(t => {
+  txs.forEach(t => {
     const day = new Date(t.date).getDate().toString();
     if (!dailyMap[day]) dailyMap[day] = { income: 0, expense: 0 };
     if (t.type === 'income') dailyMap[day].income += t.amount;
@@ -70,28 +63,26 @@ export default function DashboardPage() {
   });
   const dailyData = Object.entries(dailyMap).map(([day, v]) => ({ day, ...v })).sort((a, b) => parseInt(a.day) - parseInt(b.day));
 
-  // Pie chart data
   const catMap: Record<string, number> = {};
-  transactions.filter(t => t.type === 'expense').forEach(t => {
+  txs.filter(t => t.type === 'expense').forEach(t => {
     catMap[t.category] = (catMap[t.category] || 0) + t.amount;
   });
   const pieData = Object.entries(catMap).map(([name, value]) => ({ name, value }));
   const PIE_COLORS = ['#EC4899','#F9A8D4','#A855F7','#FB923C','#34D399','#60A5FA','#FBBF24','#F87171'];
 
-  const recent = [...transactions].slice(0, 5);
+  const recent = txs.slice(0, 5);
 
-  async function handleAddTransaction(data: Partial<Transaction>) {
+  const handleAddTransaction = useCallback(async (data: Partial<Transaction>) => {
     const res = await fetch('/api/transactions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
-    if (res.ok) { showToast('Transaksi berhasil ditambahkan'); setShowModal(false); fetchData(); }
-    else showToast('Gagal menambahkan transaksi', 'error');
-  }
+    if (res.ok) {
+      showToast('Transaksi berhasil ditambahkan');
+      setShowModal(false);
+      refreshTx(txUrl);
+    } else showToast('Gagal menambahkan transaksi', 'error');
+  }, [refreshTx, txUrl, showToast]);
 
-  function getCategoryColor(name: string) {
-    return categories.find(c => c.name === name)?.color || '#EC4899';
-  }
-  function getCategoryIcon(name: string) {
-    return categories.find(c => c.name === name)?.icon || 'Tag';
-  }
+  function getCategoryColor(name: string) { return cats.find(c => c.name === name)?.color || '#EC4899'; }
+  function getCategoryIcon(name: string) { return cats.find(c => c.name === name)?.icon || 'Tag'; }
 
   return (
     <div className="space-y-6">
@@ -129,15 +120,14 @@ export default function DashboardPage() {
                     <card.icon size={16} className="text-white" />
                   </div>
                 </div>
-                <p className={`text-xl font-bold ${card.text}`}>{formatRupiah(card.value)}</p>
+                <p className={`text-xl font-bold ${card.text}`}>{hidden ? 'Rp *****' : formatRupiah(card.value)}</p>
               </motion.div>
             ))}
           </div>
-          {/* Wallet balance cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {[
-              { label: 'Saldo Cash', value: cashBalance, income: cashIncome, expense: cashExpense, icon: Banknote, color: 'from-amber-400 to-orange-400', bg: 'bg-amber-50', text: 'text-amber-700', sub: 'text-amber-500' },
-              { label: 'Saldo Bank / E-Wallet', value: bankBalance, income: bankIncome, expense: bankExpense, icon: CreditCard, color: 'from-blue-400 to-indigo-400', bg: 'bg-blue-50', text: 'text-blue-700', sub: 'text-blue-500' },
+              { label: 'Saldo Cash', value: cashBalance, income: cashIncome, expense: cashExpense, icon: Banknote, color: 'from-amber-400 to-orange-400', bg: 'bg-amber-50', text: 'text-amber-700' },
+              { label: 'Saldo Bank / E-Wallet', value: bankBalance, income: bankIncome, expense: bankExpense, icon: CreditCard, color: 'from-blue-400 to-indigo-400', bg: 'bg-blue-50', text: 'text-blue-700' },
             ].map((card, i) => (
               <motion.div key={card.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 + i * 0.1 }}
                 className={`${card.bg} rounded-2xl p-5 border border-white shadow-sm`}>
@@ -147,10 +137,10 @@ export default function DashboardPage() {
                     <card.icon size={16} className="text-white" />
                   </div>
                 </div>
-                <p className={`text-xl font-bold ${card.text}`}>{formatRupiah(card.value)}</p>
+                <p className={`text-xl font-bold ${card.text}`}>{hidden ? 'Rp *****' : formatRupiah(card.value)}</p>
                 <div className="flex gap-4 mt-2">
-                  <span className="text-xs text-emerald-500">+{formatRupiah(card.income)}</span>
-                  <span className="text-xs text-pink-500">-{formatRupiah(card.expense)}</span>
+                  <span className="text-xs text-emerald-500">{hidden ? 'Rp *****' : `+${formatRupiah(card.income)}`}</span>
+                  <span className="text-xs text-pink-500">{hidden ? 'Rp *****' : `-${formatRupiah(card.expense)}`}</span>
                 </div>
               </motion.div>
             ))}
@@ -219,7 +209,7 @@ export default function DashboardPage() {
                   <p className="text-xs text-gray-400 truncate">{t.note || formatDate(t.date)}</p>
                 </div>
                 <span className={`text-sm font-semibold ${t.type === 'income' ? 'text-emerald-500' : 'text-pink-500'}`}>
-                  {t.type === 'income' ? '+' : '-'}{formatRupiah(t.amount)}
+                  {hidden ? 'Rp *****' : `${t.type === 'income' ? '+' : '-'}${formatRupiah(t.amount)}`}
                 </span>
               </motion.div>
             ))}
@@ -240,7 +230,7 @@ export default function DashboardPage() {
       </motion.button>
 
       <Modal open={showModal} onClose={() => setShowModal(false)} title="Tambah Transaksi">
-        <TransactionForm onSubmit={handleAddTransaction} onClose={() => setShowModal(false)} categories={categories} />
+        <TransactionForm onSubmit={handleAddTransaction} onClose={() => setShowModal(false)} categories={cats} />
       </Modal>
     </div>
   );

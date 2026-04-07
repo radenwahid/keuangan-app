@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, Pencil, Trash2, Tag, Lock } from 'lucide-react';
 import { Category } from '@/lib/types';
@@ -7,6 +7,7 @@ import Modal from '@/components/Modal';
 import CategoryIcon, { ICON_OPTIONS } from '@/components/CategoryIcon';
 import { useToast } from '@/components/Toast';
 import { SkeletonList } from '@/components/Skeleton';
+import { useFetch } from '@/lib/useFetch';
 
 const COLOR_OPTIONS = ['#EC4899','#F97316','#EF4444','#10B981','#3B82F6','#8B5CF6','#F59E0B','#14B8A6','#64748B','#A855F7'];
 
@@ -80,39 +81,31 @@ function CategoryForm({ initial, onSubmit, onClose }: {
 }
 
 export default function CategoriesPage() {
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editCat, setEditCat] = useState<Category | null>(null);
   const [tab, setTab] = useState<'expense' | 'income'>('expense');
   const { showToast } = useToast();
 
-  const fetchCategories = useCallback(async () => {
-    setLoading(true);
-    const res = await fetch('/api/categories');
-    setCategories(await res.json());
-    setLoading(false);
-  }, []);
-
-  useEffect(() => { fetchCategories(); }, [fetchCategories]);
+  const { data, loading, refresh } = useFetch<Category[]>('/api/categories', { ttl: 300_000 });
+  const categories = data ?? [];
 
   async function handleAdd(data: Partial<Category>) {
     const res = await fetch('/api/categories', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
-    if (res.ok) { showToast('Kategori ditambahkan'); setShowModal(false); fetchCategories(); }
+    if (res.ok) { showToast('Kategori ditambahkan'); setShowModal(false); refresh(); }
     else { const e = await res.json(); showToast(e.error || 'Gagal', 'error'); }
   }
 
   async function handleEdit(data: Partial<Category>) {
     if (!editCat) return;
     const res = await fetch(`/api/categories/${editCat.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
-    if (res.ok) { showToast('Kategori diperbarui'); setEditCat(null); fetchCategories(); }
+    if (res.ok) { showToast('Kategori diperbarui'); setEditCat(null); refresh(); }
     else showToast('Gagal memperbarui', 'error');
   }
 
   async function handleDelete(cat: Category) {
     if (!confirm(`Hapus kategori "${cat.name}"?`)) return;
     const res = await fetch(`/api/categories/${cat.id}`, { method: 'DELETE' });
-    if (res.ok) { showToast('Kategori dihapus'); fetchCategories(); }
+    if (res.ok) { showToast('Kategori dihapus'); refresh(); }
     else { const e = await res.json(); showToast(e.error || 'Gagal menghapus', 'error'); }
   }
 

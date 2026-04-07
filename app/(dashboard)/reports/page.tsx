@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Download, FileSpreadsheet, BarChart2 } from 'lucide-react';
 import {
@@ -9,6 +9,8 @@ import {
 import { formatRupiah, formatDate } from '@/lib/utils';
 import { Transaction } from '@/lib/types';
 import { SkeletonCard } from '@/components/Skeleton';
+import { useFetch } from '@/lib/useFetch';
+import { useBalance } from '@/components/DashboardShell';
 
 const MONTHS = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 const PIE_COLORS = ['#EC4899','#F9A8D4','#A855F7','#FB923C','#34D399','#60A5FA','#FBBF24','#F87171'];
@@ -26,37 +28,27 @@ export default function ReportsPage() {
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
-  const [data, setData] = useState<ReportData | null>(null);
-  const [loading, setLoading] = useState(true);
 
-  const fetchReport = useCallback(async () => {
-    setLoading(true);
-    const res = await fetch(`/api/reports?month=${month}&year=${year}`);
-    setData(await res.json());
-    setLoading(false);
-  }, [month, year]);
-
-  useEffect(() => { fetchReport(); }, [fetchReport]);
+  const reportUrl = `/api/reports?month=${month}&year=${year}`;
+  const { data, loading } = useFetch<ReportData>(reportUrl, { ttl: 120_000 });
+  const { hidden } = useBalance();
 
   async function exportPDF() {
     if (!data) return;
     const { default: jsPDF } = await import('jspdf');
     const { default: autoTable } = await import('jspdf-autotable');
     const doc = new jsPDF();
-    doc.setFontSize(18);
-    doc.text(`Laporan Keuangan`, 14, 20);
-    doc.setFontSize(12);
-    doc.text(`${MONTHS[month-1]} ${year}`, 14, 30);
+    doc.setFontSize(18); doc.text(`Laporan Keuangan`, 14, 20);
+    doc.setFontSize(12); doc.text(`${MONTHS[month-1]} ${year}`, 14, 30);
     doc.setFontSize(10);
     doc.text(`Total Pemasukan: ${formatRupiah(data.totalIncome)}`, 14, 45);
     doc.text(`Total Pengeluaran: ${formatRupiah(data.totalExpense)}`, 14, 53);
     doc.text(`Saldo Bersih: ${formatRupiah(data.balance)}`, 14, 61);
     autoTable(doc, {
       startY: 70,
-      head: [['Tanggal', 'Tipe', 'Kategori', 'Catatan', 'Nominal']],
-      body: data.transactions.map(t => [formatDate(t.date), t.type === 'income' ? 'Pemasukan' : 'Pengeluaran', t.category, t.note, formatRupiah(t.amount)]),
-      styles: { fontSize: 9 },
-      headStyles: { fillColor: [236, 72, 153] },
+      head: [['Tanggal','Tipe','Kategori','Catatan','Nominal']],
+      body: data.transactions.map(t => [formatDate(t.date), t.type==='income'?'Pemasukan':'Pengeluaran', t.category, t.note, formatRupiah(t.amount)]),
+      styles: { fontSize: 9 }, headStyles: { fillColor: [236,72,153] },
     });
     doc.save(`laporan-${month}-${year}.pdf`);
   }
@@ -69,21 +61,14 @@ export default function ReportsPage() {
       { '': 'Total Pengeluaran', Nominal: data.totalExpense },
       { '': 'Saldo Bersih', Nominal: data.balance },
       {},
-      ...data.transactions.map(t => ({
-        Tanggal: formatDate(t.date), Tipe: t.type === 'income' ? 'Pemasukan' : 'Pengeluaran',
-        Kategori: t.category, Catatan: t.note, Nominal: t.amount,
-      })),
+      ...data.transactions.map(t => ({ Tanggal: formatDate(t.date), Tipe: t.type==='income'?'Pemasukan':'Pengeluaran', Kategori: t.category, Catatan: t.note, Nominal: t.amount })),
     ]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Laporan');
     XLSX.writeFile(wb, `laporan-${month}-${year}.xlsx`);
   }
 
-  const dailyChartData = data?.daily.map(d => ({
-    day: new Date(d.date).getDate().toString(),
-    income: d.income,
-    expense: d.expense,
-  })) || [];
+  const dailyChartData = data?.daily.map(d => ({ day: new Date(d.date).getDate().toString(), income: d.income, expense: d.expense })) || [];
 
   return (
     <div className="space-y-6">
@@ -123,7 +108,7 @@ export default function ReportsPage() {
               <motion.div key={card.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
                 className={`${card.bg} rounded-2xl p-5 border border-white shadow-sm`}>
                 <p className="text-xs text-gray-500 mb-2">{card.label}</p>
-                <p className={`text-xl font-bold ${card.color}`}>{formatRupiah(card.value)}</p>
+                <p className={`text-xl font-bold ${card.color}`}>{hidden ? 'Rp *****' : formatRupiah(card.value)}</p>
               </motion.div>
             ))}
           </div>
@@ -145,7 +130,6 @@ export default function ReportsPage() {
                 </ResponsiveContainer>
               )}
             </div>
-
             <div className="bg-white rounded-2xl p-5 border border-pink-100 shadow-sm">
               <h3 className="text-sm font-semibold text-pink-700 mb-4">Pengeluaran per Kategori</h3>
               {data.byCategory.length === 0 ? (
@@ -164,7 +148,6 @@ export default function ReportsPage() {
             </div>
           </div>
 
-          {/* Table */}
           <div className="bg-white rounded-2xl border border-pink-100 shadow-sm overflow-hidden">
             <div className="p-5 border-b border-pink-50">
               <h3 className="text-sm font-semibold text-pink-700">Semua Transaksi</h3>
@@ -178,25 +161,23 @@ export default function ReportsPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-pink-50">
-                    <tr>
-                      {['Tanggal','Tipe','Kategori','Catatan','Nominal'].map(h => (
-                        <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-pink-600">{h}</th>
-                      ))}
-                    </tr>
+                    <tr>{['Tanggal','Tipe','Kategori','Catatan','Nominal'].map(h => (
+                      <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-pink-600">{h}</th>
+                    ))}</tr>
                   </thead>
                   <tbody>
                     {data.transactions.map((t, i) => (
                       <tr key={t.id} className={i % 2 === 0 ? 'bg-white' : 'bg-pink-50/30'}>
                         <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{formatDate(t.date)}</td>
                         <td className="px-4 py-3">
-                          <span className={`text-xs px-2 py-0.5 rounded-full ${t.type === 'income' ? 'bg-emerald-100 text-emerald-600' : 'bg-pink-100 text-pink-600'}`}>
-                            {t.type === 'income' ? 'Pemasukan' : 'Pengeluaran'}
+                          <span className={`text-xs px-2 py-0.5 rounded-full ${t.type==='income'?'bg-emerald-100 text-emerald-600':'bg-pink-100 text-pink-600'}`}>
+                            {t.type==='income'?'Pemasukan':'Pengeluaran'}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-gray-600">{t.category}</td>
-                        <td className="px-4 py-3 text-gray-400 max-w-[200px] truncate">{t.note || '—'}</td>
-                        <td className={`px-4 py-3 font-semibold ${t.type === 'income' ? 'text-emerald-500' : 'text-pink-500'}`}>
-                          {t.type === 'income' ? '+' : '-'}{formatRupiah(t.amount)}
+                        <td className="px-4 py-3 text-gray-400 max-w-[200px] truncate">{t.note||'—'}</td>
+                        <td className={`px-4 py-3 font-semibold ${t.type==='income'?'text-emerald-500':'text-pink-500'}`}>
+                          {hidden ? 'Rp *****' : `${t.type==='income'?'+':'-'}${formatRupiah(t.amount)}`}
                         </td>
                       </tr>
                     ))}

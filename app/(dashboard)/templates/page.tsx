@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, Pencil, Trash2, FileText } from 'lucide-react';
 import { Template, Category } from '@/lib/types';
@@ -7,6 +7,7 @@ import { formatRupiah } from '@/lib/utils';
 import Modal from '@/components/Modal';
 import { useToast } from '@/components/Toast';
 import { SkeletonList } from '@/components/Skeleton';
+import { useFetch } from '@/lib/useFetch';
 
 function TemplateForm({ initial, categories, onSubmit, onClose }: {
   initial?: Partial<Template>;
@@ -85,40 +86,32 @@ function TemplateForm({ initial, categories, onSubmit, onClose }: {
 }
 
 export default function TemplatesPage() {
-  const [templates, setTemplates] = useState<Template[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editTpl, setEditTpl] = useState<Template | null>(null);
   const { showToast } = useToast();
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    const [tplRes, catRes] = await Promise.all([fetch('/api/templates'), fetch('/api/categories')]);
-    setTemplates(await tplRes.json());
-    setCategories(await catRes.json());
-    setLoading(false);
-  }, []);
-
-  useEffect(() => { fetchData(); }, [fetchData]);
+  const { data: tplData, loading, refresh: refreshTpl } = useFetch<Template[]>('/api/templates', { ttl: 300_000 });
+  const { data: catData } = useFetch<Category[]>('/api/categories', { ttl: 300_000 });
+  const templates = tplData ?? [];
+  const categories = catData ?? [];
 
   async function handleAdd(data: Partial<Template>) {
     const res = await fetch('/api/templates', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
-    if (res.ok) { showToast('Template ditambahkan'); setShowModal(false); fetchData(); }
+    if (res.ok) { showToast('Template ditambahkan'); setShowModal(false); refreshTpl(); }
     else showToast('Gagal menambahkan', 'error');
   }
 
   async function handleEdit(data: Partial<Template>) {
     if (!editTpl) return;
     const res = await fetch(`/api/templates/${editTpl.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
-    if (res.ok) { showToast('Template diperbarui'); setEditTpl(null); fetchData(); }
+    if (res.ok) { showToast('Template diperbarui'); setEditTpl(null); refreshTpl(); }
     else showToast('Gagal memperbarui', 'error');
   }
 
   async function handleDelete(id: string) {
     if (!confirm('Hapus template ini?')) return;
     const res = await fetch(`/api/templates/${id}`, { method: 'DELETE' });
-    if (res.ok) { showToast('Template dihapus'); fetchData(); }
+    if (res.ok) { showToast('Template dihapus'); refreshTpl(); }
     else showToast('Gagal menghapus', 'error');
   }
 
