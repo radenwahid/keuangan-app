@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Pencil, Check, X, KeyRound, User } from 'lucide-react';
 import { getInitials, formatDate } from '@/lib/utils';
 import { useToast } from '@/components/Toast';
+import { useI18n } from '@/lib/i18n';
 
 interface ProfileData {
   id: string;
@@ -13,6 +14,7 @@ interface ProfileData {
 }
 
 export default function ProfilePage() {
+  const { t } = useI18n();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [editName, setEditName] = useState(false);
   const [newName, setNewName] = useState('');
@@ -38,23 +40,23 @@ export default function ProfilePage() {
       const d = await res.json();
       setProfile(d);
       setEditName(false);
-      showToast('Nama berhasil diperbarui');
-    } else showToast('Gagal memperbarui nama', 'error');
+      showToast(t('profile_name_updated'));
+    } else showToast(t('profile_name_fail'), 'error');
     setLoadingName(false);
   }
 
   async function savePassword(e: React.FormEvent) {
     e.preventDefault();
-    if (newPassword !== confirmPassword) { showToast('Konfirmasi password tidak cocok', 'error'); return; }
-    if (newPassword.length < 6) { showToast('Password minimal 6 karakter', 'error'); return; }
+    if (newPassword !== confirmPassword) { showToast(t('profile_pw_mismatch'), 'error'); return; }
+    if (newPassword.length < 6) { showToast(t('profile_pw_short'), 'error'); return; }
     setLoadingPw(true);
     const res = await fetch('/api/profile', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ oldPassword, newPassword }) });
     if (res.ok) {
-      showToast('Password berhasil diubah');
+      showToast(t('profile_pw_updated'));
       setOldPassword(''); setNewPassword(''); setConfirmPassword('');
     } else {
       const e = await res.json();
-      showToast(e.error || 'Gagal mengubah password', 'error');
+      showToast(e.error || t('profile_pw_mismatch'), 'error');
     }
     setLoadingPw(false);
   }
@@ -68,8 +70,8 @@ export default function ProfilePage() {
   return (
     <div className="space-y-6 max-w-lg">
       <div>
-        <h1 className="text-2xl font-bold text-pink-800">Profil</h1>
-        <p className="text-pink-400 text-sm">Kelola informasi akun kamu</p>
+        <h1 className="text-2xl font-bold text-pink-800">{t('profile_title')}</h1>
+        <p className="text-pink-400 text-sm">{t('profile_subtitle')}</p>
       </div>
 
       {/* Avatar & info */}
@@ -82,14 +84,14 @@ export default function ProfilePage() {
           <div>
             <p className="text-lg font-bold text-gray-800">{profile.name}</p>
             <p className="text-sm text-gray-400">{profile.email}</p>
-            <p className="text-xs text-pink-400 mt-1">Bergabung {formatDate(profile.createdAt)}</p>
+            <p className="text-xs text-pink-400 mt-1">{t('profile_joined')} {formatDate(profile.createdAt)}</p>
           </div>
         </div>
 
         {/* Edit name */}
         <div>
           <label className="text-xs font-medium text-pink-600 mb-2 block flex items-center gap-1">
-            <User size={12} /> Nama Lengkap
+            <User size={12} /> {t('profile_full_name')}
           </label>
           {editName ? (
             <div className="flex gap-2">
@@ -115,7 +117,7 @@ export default function ProfilePage() {
         </div>
 
         <div className="mt-4">
-          <label className="text-xs font-medium text-pink-600 mb-2 block">Email</label>
+          <label className="text-xs font-medium text-pink-600 mb-2 block">{t('profile_email')}</label>
           <div className="px-4 py-2.5 rounded-xl bg-gray-50 border border-gray-100 text-sm text-gray-500">
             {profile.email}
           </div>
@@ -126,13 +128,13 @@ export default function ProfilePage() {
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
         className="bg-white rounded-3xl p-6 border border-pink-100 shadow-sm">
         <h2 className="text-sm font-semibold text-pink-700 mb-4 flex items-center gap-2">
-          <KeyRound size={16} /> Ganti Password
+          <KeyRound size={16} /> {t('profile_change_password')}
         </h2>
         <form onSubmit={savePassword} className="space-y-4">
           {[
-            { label: 'Password Lama', value: oldPassword, onChange: setOldPassword },
-            { label: 'Password Baru', value: newPassword, onChange: setNewPassword },
-            { label: 'Konfirmasi Password Baru', value: confirmPassword, onChange: setConfirmPassword },
+            { label: t('profile_old_password'), value: oldPassword, onChange: setOldPassword },
+            { label: t('profile_new_password'), value: newPassword, onChange: setNewPassword },
+            { label: t('profile_confirm_password'), value: confirmPassword, onChange: setConfirmPassword },
           ].map(field => (
             <div key={field.label}>
               <label className="text-xs font-medium text-pink-600 mb-1 block">{field.label}</label>
@@ -142,7 +144,7 @@ export default function ProfilePage() {
           ))}
           <button type="submit" disabled={loadingPw}
             className="w-full py-2.5 rounded-full bg-gradient-to-r from-pink-500 to-fuchsia-500 text-white text-sm font-medium shadow-md shadow-pink-200 disabled:opacity-60">
-            {loadingPw ? 'Menyimpan...' : 'Ubah Password'}
+            {loadingPw ? t('profile_saving') : t('profile_save_password')}
           </button>
         </form>
       </motion.div>

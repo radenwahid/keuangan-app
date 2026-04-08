@@ -6,6 +6,7 @@ import OnboardingTour from '@/components/OnboardingTour';
 import NotificationPanel from '@/components/NotificationPanel';
 import UserMenu from '@/components/UserMenu';
 import { Eye, EyeOff } from 'lucide-react';
+import { I18nProvider, useI18n } from '@/lib/i18n';
 
 export const SidebarContext = createContext<{
   collapsed: boolean;
@@ -34,36 +35,49 @@ export default function DashboardShell({ userName, userEmail, onboardingDone, ch
   const [hidden, setHidden] = useState(false);
 
   return (
-    <SidebarContext.Provider value={{ collapsed, setCollapsed }}>
-      <BalanceContext.Provider value={{ hidden, toggle: () => setHidden(h => !h) }}>
-        <ToastProvider>
-          <div className="min-h-screen bg-[#FDF2F8]">
-            <Sidebar userName={userName} userEmail={userEmail} />
-            <main className={`min-h-screen transition-all duration-300 ${collapsed ? 'lg:ml-20' : 'lg:ml-64'}`}>
-              {/* Topbar */}
-              <div className="sticky top-0 z-30 flex items-center justify-between px-4 py-3 lg:px-8 bg-[#FDF2F8]/80 backdrop-blur-md border-b border-pink-100/60">
-                <div className="w-8 lg:hidden" />
-                <div className="flex-1" />
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setHidden(h => !h)}
-                    title={hidden ? 'Tampilkan saldo' : 'Sembunyikan saldo'}
-                    className="p-2 rounded-xl hover:bg-pink-100 text-pink-400 transition-colors"
-                  >
-                    {hidden ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
-                  <div className="w-px h-5 bg-pink-200" />
-                  <NotificationPanel />
-                  <div className="w-px h-5 bg-pink-200" />
-                  <UserMenu userName={userName} userEmail={userEmail} />
-                </div>
-              </div>
-              <div className="p-4 lg:p-8">{children}</div>
-            </main>
-          </div>
-          {showOnboarding && <OnboardingTour onDone={() => setShowOnboarding(false)} />}
-        </ToastProvider>
-      </BalanceContext.Provider>
-    </SidebarContext.Provider>
+    <I18nProvider>
+      <SidebarContext.Provider value={{ collapsed, setCollapsed }}>
+        <BalanceContext.Provider value={{ hidden, toggle: () => setHidden(h => !h) }}>
+          <ToastProvider>
+            <div className="min-h-screen bg-[#FDF2F8]">
+              <Sidebar userName={userName} userEmail={userEmail} />
+              <main className={`min-h-screen transition-all duration-300 ${collapsed ? 'lg:ml-20' : 'lg:ml-64'}`}>
+                <DashboardTopbar hidden={hidden} setHidden={setHidden} userName={userName} userEmail={userEmail} />
+                <div className="p-4 lg:p-8">{children}</div>
+              </main>
+            </div>
+            {showOnboarding && <OnboardingTour onDone={() => setShowOnboarding(false)} />}
+          </ToastProvider>
+        </BalanceContext.Provider>
+      </SidebarContext.Provider>
+    </I18nProvider>
+  );
+}
+
+function DashboardTopbar({ hidden, setHidden, userName, userEmail }: {
+  hidden: boolean;
+  setHidden: (fn: (h: boolean) => boolean) => void;
+  userName: string;
+  userEmail: string;
+}) {
+  const { t } = useI18n();
+  return (
+    <div className="sticky top-0 z-30 flex items-center justify-between px-4 py-3 lg:px-8 bg-[#FDF2F8]/80 backdrop-blur-md border-b border-pink-100/60">
+      <div className="w-8 lg:hidden" />
+      <div className="flex-1" />
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => setHidden(h => !h)}
+          title={hidden ? t('topbar_show_balance') : t('topbar_hide_balance')}
+          className="p-2 rounded-xl hover:bg-pink-100 text-pink-400 transition-colors"
+        >
+          {hidden ? <EyeOff size={18} /> : <Eye size={18} />}
+        </button>
+        <div className="w-px h-5 bg-pink-200" />
+        <NotificationPanel />
+        <div className="w-px h-5 bg-pink-200" />
+        <UserMenu userName={userName} userEmail={userEmail} />
+      </div>
+    </div>
   );
 }

@@ -2,7 +2,8 @@
 import { useState, useEffect } from 'react';
 import { Banknote, CreditCard, ArrowRight, AlertCircle, ArrowLeftRight } from 'lucide-react';
 import { Transaction, WalletType } from '@/lib/types';
-import { formatRupiah } from '@/lib/utils';
+import { formatRupiah, formatThousands, parseThousands } from '@/lib/utils';
+import { useI18n } from '@/lib/i18n';
 
 interface Props {
   onClose: () => void;
@@ -16,11 +17,12 @@ const WALLET_OPTIONS: { value: WalletType; label: string; icon: React.ReactNode 
 ];
 
 export default function TransferForm({ onClose, onSuccess, initial }: Props) {
+  const { t } = useI18n();
   const isEdit = !!initial;
 
   const [from, setFrom] = useState<WalletType>(initial?.walletType ?? 'cash');
   const [to, setTo] = useState<WalletType>(initial?.toWalletType ?? 'bank');
-  const [amount, setAmount] = useState(initial?.amount?.toString() ?? '');
+  const [amount, setAmount] = useState(initial?.amount ? formatThousands(initial.amount.toString()) : '');
   const [note, setNote] = useState(initial?.note ?? '');
   const [date, setDate] = useState(initial?.date ?? new Date().toISOString().slice(0, 10));
   const [loading, setLoading] = useState(false);
@@ -43,12 +45,12 @@ export default function TransferForm({ onClose, onSuccess, initial }: Props) {
     ? (isEdit && initial?.walletType === from ? rawFromBalance + (initial?.amount ?? 0) : rawFromBalance)
     : null;
 
-  const amountNum = Number(amount);
+  const amountNum = parseThousands(amount);
   const isInsufficient = fromBalance !== null && amountNum > 0 && amountNum > fromBalance;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (from === to) { setError('Dompet asal dan tujuan tidak boleh sama'); return; }
+    if (from === to) { setError(t('transfer_same_wallet')); return; }
     setError('');
     setLoading(true);
 
@@ -74,7 +76,7 @@ export default function TransferForm({ onClose, onSuccess, initial }: Props) {
     <form onSubmit={handleSubmit} className="space-y-4">
       {/* From → To */}
       <div>
-        <label className="text-xs font-medium text-pink-600 mb-2 block">Dari → Ke</label>
+        <label className="text-xs font-medium text-pink-600 mb-2 block">{t('transfer_from_to')}</label>
         <div className="flex items-center gap-2">
           <div className="flex-1 flex flex-col gap-1.5">
             {WALLET_OPTIONS.map(w => (
@@ -82,7 +84,7 @@ export default function TransferForm({ onClose, onSuccess, initial }: Props) {
                 className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-sm font-medium transition-all ${
                   from === w.value ? 'border-amber-400 bg-amber-50 text-amber-700' : 'border-pink-200 text-pink-400 hover:bg-pink-50'
                 }`}>
-                {w.icon} {w.label}
+                {w.icon} {w.value === 'cash' ? t('tx_wallet_cash') : t('tx_wallet_bank')}
               </button>
             ))}
           </div>
@@ -98,7 +100,7 @@ export default function TransferForm({ onClose, onSuccess, initial }: Props) {
                 className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-sm font-medium transition-all ${
                   to === w.value ? 'border-blue-400 bg-blue-50 text-blue-700' : 'border-pink-200 text-pink-400 hover:bg-pink-50'
                 }`}>
-                {w.icon} {w.label}
+                {w.icon} {w.value === 'cash' ? t('tx_wallet_cash') : t('tx_wallet_bank')}
               </button>
             ))}
           </div>
@@ -108,51 +110,57 @@ export default function TransferForm({ onClose, onSuccess, initial }: Props) {
       {/* Preview arah + saldo tersedia */}
       <div className="bg-pink-50 rounded-xl px-4 py-3 space-y-1.5">
         <div className="flex items-center justify-center gap-2 text-sm text-pink-600">
-          <span className="font-medium">{from === 'cash' ? 'Cash' : 'Bank/E-Wallet'}</span>
+          <span className="font-medium">{from === 'cash' ? t('tx_wallet_cash') : t('tx_wallet_bank')}</span>
           <ArrowRight size={14} className="text-pink-400" />
-          <span className="font-medium">{to === 'cash' ? 'Cash' : 'Bank/E-Wallet'}</span>
+          <span className="font-medium">{to === 'cash' ? t('tx_wallet_cash') : t('tx_wallet_bank')}</span>
         </div>
         {balanceLoading ? (
-          <p className="text-xs text-center text-gray-400 animate-pulse">Memuat saldo...</p>
+          <p className="text-xs text-center text-gray-400 animate-pulse">{t('transfer_loading_balance')}</p>
         ) : fromBalance !== null ? (
           <p className={`text-xs text-center font-medium ${isInsufficient ? 'text-red-500' : 'text-gray-400'}`}>
-            Saldo {from === 'cash' ? 'Cash' : 'Bank/E-Wallet'} tersedia: {formatRupiah(fromBalance)}
+            {from === 'cash' ? t('tx_wallet_cash') : t('tx_wallet_bank')} {t('transfer_available')}: {formatRupiah(fromBalance)}
           </p>
         ) : (
-          <p className="text-xs text-center text-gray-400">Saldo tidak tersedia</p>
+          <p className="text-xs text-center text-gray-400">{t('transfer_balance_unavailable')}</p>
         )}
       </div>
 
       {/* Amount */}
       <div>
-        <label className="text-xs font-medium text-pink-600 mb-1 block">Nominal</label>
+        <label className="text-xs font-medium text-pink-600 mb-1 block">{t('form_amount')}</label>
         <div className="relative">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-pink-400 text-sm">Rp</span>
-          <input type="number" value={amount} onChange={e => { setAmount(e.target.value); setError(''); }} required min="1"
+          <input
+            type="text"
+            inputMode="numeric"
+            value={amount}
+            onChange={e => { setAmount(formatThousands(e.target.value)); setError(''); }}
+            required
             className={`w-full pl-10 pr-4 py-2.5 rounded-xl border focus:outline-none focus:ring-2 text-sm transition-colors ${
               isInsufficient ? 'border-red-300 focus:ring-red-200 bg-red-50' : 'border-pink-200 focus:ring-pink-300'
             }`}
-            placeholder="0" />
+            placeholder="0"
+          />
         </div>
         {isInsufficient && (
           <div className="flex items-center gap-1.5 mt-1.5 text-xs text-red-500">
             <AlertCircle size={13} />
-            <span>Saldo tidak mencukupi. Kurang {formatRupiah(amountNum - fromBalance!)}</span>
+            <span>{t('transfer_insufficient')} {formatRupiah(amountNum - fromBalance!)}</span>
           </div>
         )}
       </div>
 
       {/* Note */}
       <div>
-        <label className="text-xs font-medium text-pink-600 mb-1 block">Catatan</label>
+        <label className="text-xs font-medium text-pink-600 mb-1 block">{t('form_note')}</label>
         <input type="text" value={note} onChange={e => setNote(e.target.value)}
           className="w-full px-4 py-2.5 rounded-xl border border-pink-200 focus:outline-none focus:ring-2 focus:ring-pink-300 text-sm"
-          placeholder="Opsional" />
+          placeholder={t('form_optional')} />
       </div>
 
       {/* Date */}
       <div>
-        <label className="text-xs font-medium text-pink-600 mb-1 block">Tanggal</label>
+        <label className="text-xs font-medium text-pink-600 mb-1 block">{t('form_date')}</label>
         <input type="date" value={date} onChange={e => setDate(e.target.value)} required
           className="w-full px-4 py-2.5 rounded-xl border border-pink-200 focus:outline-none focus:ring-2 focus:ring-pink-300 text-sm" />
       </div>
@@ -167,11 +175,11 @@ export default function TransferForm({ onClose, onSuccess, initial }: Props) {
       <div className="flex gap-3 pt-2">
         <button type="button" onClick={onClose}
           className="flex-1 py-2.5 rounded-full border border-pink-200 text-pink-500 text-sm font-medium hover:bg-pink-50">
-          Batal
+          {t('form_cancel')}
         </button>
         <button type="submit" disabled={loading || from === to || isInsufficient}
           className="flex-1 py-2.5 rounded-full bg-gradient-to-r from-violet-500 to-purple-500 text-white text-sm font-medium shadow-md shadow-violet-200 disabled:opacity-60">
-          {loading ? 'Menyimpan...' : isEdit ? 'Simpan Perubahan' : 'Transfer'}
+          {loading ? t('form_saving') : isEdit ? t('transfer_save_changes') : t('transfer_submit')}
         </button>
       </div>
     </form>

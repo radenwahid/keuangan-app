@@ -3,8 +3,9 @@ import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { User, LogOut, ChevronDown } from 'lucide-react';
+import { User, LogOut, ChevronDown, Languages } from 'lucide-react';
 import { getInitials } from '@/lib/utils';
+import { useI18n } from '@/lib/i18n';
 
 interface Props {
   userName: string;
@@ -15,6 +16,7 @@ export default function UserMenu({ userName, userEmail }: Props) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const { t, locale, setLocale } = useI18n();
 
   useEffect(() => {
     function handler(e: MouseEvent) {
@@ -75,14 +77,45 @@ export default function UserMenu({ userName, userEmail }: Props) {
                 className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-pink-700 hover:bg-pink-50 transition-colors"
               >
                 <User size={15} className="text-pink-400" />
-                Lihat Profil
+                {t('menu_view_profile')}
               </Link>
+
+              {/* Language toggle */}
+              <div className="flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-pink-50 transition-colors">
+                <div className="flex items-center gap-2.5 text-sm text-pink-700">
+                  <Languages size={15} className="text-pink-400" />
+                  {t('menu_language')}
+                </div>
+                <div className="flex items-center gap-0.5 bg-pink-100 rounded-lg p-0.5">
+                  <button
+                    onClick={() => setLocale('id')}
+                    className={`px-2 py-0.5 rounded-md text-xs font-semibold transition-all ${
+                      locale === 'id'
+                        ? 'bg-white text-pink-700 shadow-sm'
+                        : 'text-pink-400 hover:text-pink-600'
+                    }`}
+                  >
+                    ID
+                  </button>
+                  <button
+                    onClick={() => setLocale('en')}
+                    className={`px-2 py-0.5 rounded-md text-xs font-semibold transition-all ${
+                      locale === 'en'
+                        ? 'bg-white text-pink-700 shadow-sm'
+                        : 'text-pink-400 hover:text-pink-600'
+                    }`}
+                  >
+                    EN
+                  </button>
+                </div>
+              </div>
+
               <button
                 onClick={handleLogout}
                 className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-red-500 hover:bg-red-50 transition-colors"
               >
                 <LogOut size={15} className="text-red-400" />
-                Keluar
+                {t('nav_logout')}
               </button>
             </div>
           </motion.div>

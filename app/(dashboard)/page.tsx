@@ -16,11 +16,12 @@ import { SkeletonCard, SkeletonList } from '@/components/Skeleton';
 import { useToast } from '@/components/Toast';
 import { useFetch } from '@/lib/useFetch';
 import { useBalance } from '@/components/DashboardShell';
-
-const MONTHS = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+import { useI18n, useMonths } from '@/lib/i18n';
 
 export default function DashboardPage() {
   const now = new Date();
+  const { t } = useI18n();
+  const MONTHS = useMonths();
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
   const [showModal, setShowModal] = useState(false);
@@ -95,8 +96,8 @@ export default function DashboardPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-pink-800">Beranda</h1>
-          <p className="text-pink-400 text-sm mt-0.5">Ringkasan keuangan kamu</p>
+          <h1 className="text-2xl font-bold text-pink-800">{t('dashboard_title')}</h1>
+          <p className="text-pink-400 text-sm mt-0.5">{t('dashboard_subtitle')}</p>
         </div>
         <div className="flex items-center gap-2 bg-white rounded-2xl border border-pink-100 px-3 py-2 shadow-sm">
           <button onClick={prevMonth} className="p-1 rounded-lg hover:bg-pink-50 text-pink-400"><ChevronLeft size={16} /></button>
@@ -114,9 +115,9 @@ export default function DashboardPage() {
         <>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {[
-              { label: 'Total Pemasukan', value: totalIncome, icon: TrendingUp, color: 'from-emerald-400 to-teal-400', bg: 'bg-emerald-50', text: 'text-emerald-700' },
-              { label: 'Total Pengeluaran', value: totalExpense, icon: TrendingDown, color: 'from-pink-400 to-rose-400', bg: 'bg-pink-50', text: 'text-pink-700' },
-              { label: 'Saldo Bersih', value: balance, icon: Wallet, color: 'from-violet-400 to-purple-400', bg: 'bg-violet-50', text: 'text-violet-700' },
+              { label: t('dashboard_total_income'), value: totalIncome, icon: TrendingUp, color: 'from-emerald-400 to-teal-400', bg: 'bg-emerald-50', text: 'text-emerald-700' },
+              { label: t('dashboard_total_expense'), value: totalExpense, icon: TrendingDown, color: 'from-pink-400 to-rose-400', bg: 'bg-pink-50', text: 'text-pink-700' },
+              { label: t('dashboard_net_balance'), value: balance, icon: Wallet, color: 'from-violet-400 to-purple-400', bg: 'bg-violet-50', text: 'text-violet-700' },
             ].map((card, i) => (
               <motion.div key={card.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
                 className={`${card.bg} rounded-2xl p-5 border border-white shadow-sm`}>
@@ -132,8 +133,8 @@ export default function DashboardPage() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {[
-              { label: 'Saldo Cash', value: cashBalance, income: cashIncome, expense: cashExpense, icon: Banknote, color: 'from-amber-400 to-orange-400', bg: 'bg-amber-50', text: 'text-amber-700' },
-              { label: 'Saldo Bank / E-Wallet', value: bankBalance, income: bankIncome, expense: bankExpense, icon: CreditCard, color: 'from-blue-400 to-indigo-400', bg: 'bg-blue-50', text: 'text-blue-700' },
+              { label: t('dashboard_cash_balance'), value: cashBalance, income: cashIncome, expense: cashExpense, icon: Banknote, color: 'from-amber-400 to-orange-400', bg: 'bg-amber-50', text: 'text-amber-700' },
+              { label: t('dashboard_bank_balance'), value: bankBalance, income: bankIncome, expense: bankExpense, icon: CreditCard, color: 'from-blue-400 to-indigo-400', bg: 'bg-blue-50', text: 'text-blue-700' },
             ].map((card, i) => (
               <motion.div key={card.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 + i * 0.1 }}
                 className={`${card.bg} rounded-2xl p-5 border border-white shadow-sm`}>
@@ -158,17 +159,17 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
           className="bg-white rounded-2xl p-5 border border-pink-100 shadow-sm">
-          <h3 className="text-sm font-semibold text-pink-700 mb-4">Pemasukan vs Pengeluaran Harian</h3>
+          <h3 className="text-sm font-semibold text-pink-700 mb-4">{t('dashboard_chart_daily')}</h3>
           {dailyData.length === 0 ? (
-            <div className="h-48 flex items-center justify-center text-pink-300 text-sm">Belum ada data</div>
+            <div className="h-48 flex items-center justify-center text-pink-300 text-sm">{t('dashboard_no_data')}</div>
           ) : (
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={dailyData}>
                 <XAxis dataKey="day" tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} />
                 <Tooltip formatter={(v) => formatRupiah(Number(v))} />
-                <Bar dataKey="income" fill="#34D399" radius={[4,4,0,0]} name="Pemasukan" />
-                <Bar dataKey="expense" fill="#F9A8D4" radius={[4,4,0,0]} name="Pengeluaran" />
+                <Bar dataKey="income" fill="#34D399" radius={[4,4,0,0]} name={t('common_income')} />
+                <Bar dataKey="expense" fill="#F9A8D4" radius={[4,4,0,0]} name={t('common_expense')} />
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -176,9 +177,9 @@ export default function DashboardPage() {
 
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
           className="bg-white rounded-2xl p-5 border border-pink-100 shadow-sm">
-          <h3 className="text-sm font-semibold text-pink-700 mb-4">Pengeluaran per Kategori</h3>
+          <h3 className="text-sm font-semibold text-pink-700 mb-4">{t('dashboard_chart_category')}</h3>
           {pieData.length === 0 ? (
-            <div className="h-48 flex items-center justify-center text-pink-300 text-sm">Belum ada pengeluaran</div>
+            <div className="h-48 flex items-center justify-center text-pink-300 text-sm">{t('dashboard_no_expense')}</div>
           ) : (
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
@@ -196,34 +197,34 @@ export default function DashboardPage() {
       {/* Recent transactions */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
         className="bg-white rounded-2xl p-5 border border-pink-100 shadow-sm">
-        <h3 className="text-sm font-semibold text-pink-700 mb-4">Transaksi Terbaru</h3>
+        <h3 className="text-sm font-semibold text-pink-700 mb-4">{t('dashboard_recent')}</h3>
         {loading ? <SkeletonList count={3} /> : recent.length === 0 ? (
           <div className="py-8 text-center text-pink-300">
             <Wallet size={40} className="mx-auto mb-2 opacity-40" />
-            <p className="text-sm">Belum ada transaksi bulan ini</p>
+            <p className="text-sm">{t('dashboard_no_tx')}</p>
           </div>
         ) : (
           <div className="space-y-3">
-            {recent.map((t, i) => (
-              <motion.div key={t.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
+            {recent.map((tx, i) => (
+              <motion.div key={tx.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
                 className="flex items-center gap-3 p-3 rounded-xl hover:bg-pink-50 transition-colors">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${t.type === 'transfer' ? 'bg-violet-100' : ''}`}
-                  style={t.type !== 'transfer' ? { backgroundColor: getCategoryColor(t.category) + '20' } : {}}>
-                  {t.type === 'transfer'
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${tx.type === 'transfer' ? 'bg-violet-100' : ''}`}
+                  style={tx.type !== 'transfer' ? { backgroundColor: getCategoryColor(tx.category) + '20' } : {}}>
+                  {tx.type === 'transfer'
                     ? <ArrowLeftRight size={16} className="text-violet-500" />
-                    : <CategoryIcon icon={getCategoryIcon(t.category)} size={16} style={{ color: getCategoryColor(t.category) }} />
+                    : <CategoryIcon icon={getCategoryIcon(tx.category)} size={16} style={{ color: getCategoryColor(tx.category) }} />
                   }
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-700 truncate">
-                    {t.type === 'transfer'
-                      ? `${t.walletType === 'cash' ? 'Cash' : 'Bank/E-Wallet'} → ${t.toWalletType === 'cash' ? 'Cash' : 'Bank/E-Wallet'}`
-                      : t.category}
+                    {tx.type === 'transfer'
+                      ? `${tx.walletType === 'cash' ? t('tx_wallet_cash') : t('tx_wallet_bank')} → ${tx.toWalletType === 'cash' ? t('tx_wallet_cash') : t('tx_wallet_bank')}`
+                      : tx.category}
                   </p>
-                  <p className="text-xs text-gray-400 truncate">{t.note || formatDate(t.date)}</p>
+                  <p className="text-xs text-gray-400 truncate">{tx.note || formatDate(tx.date)}</p>
                 </div>
-                <span className={`text-sm font-semibold ${t.type === 'income' ? 'text-emerald-500' : t.type === 'transfer' ? 'text-violet-500' : 'text-pink-500'}`}>
-                  {hidden ? 'Rp *****' : `${t.type === 'income' ? '+' : t.type === 'transfer' ? '⇄' : '-'}${formatRupiah(t.amount)}`}
+                <span className={`text-sm font-semibold ${tx.type === 'income' ? 'text-emerald-500' : tx.type === 'transfer' ? 'text-violet-500' : 'text-pink-500'}`}>
+                  {hidden ? 'Rp *****' : `${tx.type === 'income' ? '+' : tx.type === 'transfer' ? '⇄' : '-'}${formatRupiah(tx.amount)}`}
                 </span>
               </motion.div>
             ))}
@@ -239,7 +240,7 @@ export default function DashboardPage() {
           whileTap={{ scale: 0.95 }}
           className="flex items-center gap-2 px-4 py-3 rounded-full bg-white border border-violet-200 text-violet-600 text-sm font-medium shadow-md shadow-violet-100"
         >
-          <ArrowLeftRight size={16} /> Transfer
+          <ArrowLeftRight size={16} /> {t('dashboard_transfer')}
         </motion.button>
         <motion.button
           onClick={() => setShowModal(true)}
@@ -253,10 +254,10 @@ export default function DashboardPage() {
         </motion.button>
       </div>
 
-      <Modal open={showModal} onClose={() => setShowModal(false)} title="Tambah Transaksi">
+      <Modal open={showModal} onClose={() => setShowModal(false)} title={t('tx_modal_add')}>
         <TransactionForm onSubmit={handleAddTransaction} onClose={() => setShowModal(false)} categories={cats} />
       </Modal>
-      <Modal open={showTransfer} onClose={() => setShowTransfer(false)} title="Transfer Saldo">
+      <Modal open={showTransfer} onClose={() => setShowTransfer(false)} title={t('tx_modal_transfer')}>
         <TransferForm
           onClose={() => setShowTransfer(false)}
           onSuccess={() => { setShowTransfer(false); showToast('Transfer berhasil dicatat'); refreshTx(txUrl); refreshTx('/api/transactions/balance'); }}

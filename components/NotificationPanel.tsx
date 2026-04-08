@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, Trash2, X, CheckCircle2, TrendingUp, TrendingDown, Info, ArrowLeftRight } from 'lucide-react';
 import { Notification } from '@/lib/types';
+import { useI18n } from '@/lib/i18n';
 
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -15,6 +16,7 @@ function timeAgo(dateStr: string) {
 }
 
 export default function NotificationPanel() {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [notifs, setNotifs] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(false);
@@ -100,15 +102,15 @@ export default function NotificationPanel() {
             <div className="flex items-center justify-between px-4 py-3 border-b border-pink-100">
               <div className="flex items-center gap-2">
                 <Bell size={16} className="text-pink-500" />
-                <span className="text-sm font-semibold text-pink-700">Notifikasi</span>
+                <span className="text-sm font-semibold text-pink-700">{t('notif_title')}</span>
                 {unread > 0 && (
-                  <span className="text-xs px-1.5 py-0.5 rounded-full bg-pink-100 text-pink-600 font-medium">{unread} baru</span>
+                  <span className="text-xs px-1.5 py-0.5 rounded-full bg-pink-100 text-pink-600 font-medium">{unread} {t('notif_new')}</span>
                 )}
               </div>
               <div className="flex items-center gap-1">
                 {notifs.length > 0 && (
                   <button onClick={deleteAll} className="text-xs text-red-400 hover:text-red-600 px-2 py-1 rounded-lg hover:bg-red-50">
-                    Hapus semua
+                    {t('notif_delete_all')}
                   </button>
                 )}
                 <button onClick={() => setOpen(false)} className="p-1 rounded-lg hover:bg-pink-50 text-pink-300">
@@ -120,11 +122,11 @@ export default function NotificationPanel() {
             {/* List */}
             <div className="max-h-80 overflow-y-auto">
               {loading ? (
-                <div className="py-8 text-center text-pink-300 text-sm">Memuat...</div>
+                <div className="py-8 text-center text-pink-300 text-sm">{t('notif_loading')}</div>
               ) : notifs.length === 0 ? (
                 <div className="py-10 text-center">
                   <CheckCircle2 size={32} className="mx-auto mb-2 text-pink-200" />
-                  <p className="text-sm text-pink-300">Tidak ada notifikasi</p>
+                  <p className="text-sm text-pink-300">{t('notif_empty')}</p>
                 </div>
               ) : (
                 notifs.map(n => (

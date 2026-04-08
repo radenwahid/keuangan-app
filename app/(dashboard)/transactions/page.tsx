@@ -18,12 +18,14 @@ import { useToast } from '@/components/Toast';
 import { useFetch } from '@/lib/useFetch';
 import { cacheInvalidate } from '@/lib/cache';
 import { useBalance } from '@/components/DashboardShell';
+import { useI18n, useMonths } from '@/lib/i18n';
 
-const MONTHS = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 const PAGE_SIZE = 10;
 
 export default function TransactionsPage() {
   const now = new Date();
+  const { t } = useI18n();
+  const MONTHS = useMonths();
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
   const [showModal, setShowModal] = useState(false);
@@ -69,22 +71,22 @@ export default function TransactionsPage() {
 
   async function handleAdd(data: Partial<Transaction>) {
     const res = await fetch('/api/transactions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
-    if (res.ok) { showToast('Transaksi ditambahkan'); setShowModal(false); invalidateAndRefresh(); }
-    else showToast('Gagal menambahkan', 'error');
+    if (res.ok) { showToast(t('tx_added')); setShowModal(false); invalidateAndRefresh(); }
+    else showToast(t('tx_add_fail'), 'error');
   }
 
   async function handleEdit(data: Partial<Transaction>) {
     if (!editTx) return;
     const res = await fetch(`/api/transactions/${editTx.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
-    if (res.ok) { showToast('Transaksi diperbarui'); setEditTx(null); invalidateAndRefresh(); }
-    else showToast('Gagal memperbarui', 'error');
+    if (res.ok) { showToast(t('tx_updated')); setEditTx(null); invalidateAndRefresh(); }
+    else showToast(t('tx_update_fail'), 'error');
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Hapus transaksi ini?')) return;
+    if (!confirm(t('tx_delete_confirm'))) return;
     const res = await fetch(`/api/transactions/${id}`, { method: 'DELETE' });
-    if (res.ok) { showToast('Transaksi dihapus'); invalidateAndRefresh(); }
-    else showToast('Gagal menghapus', 'error');
+    if (res.ok) { showToast(t('tx_deleted')); invalidateAndRefresh(); }
+    else showToast(t('tx_delete_fail'), 'error');
   }
 
   const paginated = transactions.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -163,7 +165,7 @@ export default function TransactionsPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-pink-800">Transaksi</h1>
+          <h1 className="text-2xl font-bold text-pink-800">{t('tx_title')}</h1>
           <p className="text-pink-400 text-sm">{transactions.length} transaksi</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -182,15 +184,15 @@ export default function TransactionsPage() {
           </button>
           <button onClick={() => { setBulkMode(b => !b); setSelected(new Set()); }}
             className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-sm shadow-sm transition-all ${bulkMode ? 'bg-violet-500 border-violet-500 text-white' : 'bg-white border-pink-100 text-violet-500 hover:bg-violet-50'}`}>
-            <CheckSquare size={15} /> Pilih
+            <CheckSquare size={15} /> {t('tx_select')}
           </button>
           <button onClick={() => setShowTransfer(true)}
             className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-gradient-to-r from-violet-500 to-purple-500 text-white text-sm shadow-md shadow-violet-200">
-            <ArrowLeftRight size={16} /> Transfer
+            <ArrowLeftRight size={16} /> {t('tx_transfer')}
           </button>
           <button onClick={() => setShowModal(true)}
             className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-gradient-to-r from-pink-500 to-fuchsia-500 text-white text-sm shadow-md shadow-pink-200">
-            <Plus size={16} /> Tambah
+            <Plus size={16} /> {t('tx_add')}
           </button>
         </div>
       </div>
@@ -199,21 +201,21 @@ export default function TransactionsPage() {
       <div className="flex gap-3 flex-wrap">
         <select value={filterType} onChange={e => { setFilterType(e.target.value); setPage(1); }}
           className="px-3 py-2 rounded-xl border border-pink-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-pink-300">
-          <option value="">Semua Tipe</option>
-          <option value="income">Pemasukan</option>
-          <option value="expense">Pengeluaran</option>
-          <option value="transfer">Transfer</option>
+          <option value="">{t('tx_filter_all_type')}</option>
+          <option value="income">{t('tx_filter_income')}</option>
+          <option value="expense">{t('tx_filter_expense')}</option>
+          <option value="transfer">{t('tx_filter_transfer')}</option>
         </select>
         <select value={filterCat} onChange={e => { setFilterCat(e.target.value); setPage(1); }}
           className="px-3 py-2 rounded-xl border border-pink-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-pink-300">
-          <option value="">Semua Kategori</option>
+          <option value="">{t('tx_filter_all_cat')}</option>
           {cats.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
         </select>
         <select value={filterWallet} onChange={e => { setFilterWallet(e.target.value); setPage(1); }}
           className="px-3 py-2 rounded-xl border border-pink-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-pink-300">
-          <option value="">Semua Dompet</option>
-          <option value="cash">Cash</option>
-          <option value="bank">Bank / E-Wallet</option>
+          <option value="">{t('tx_filter_all_wallet')}</option>
+          <option value="cash">{t('tx_wallet_cash')}</option>
+          <option value="bank">{t('tx_wallet_bank')}</option>
         </select>
       </div>
 
@@ -225,21 +227,21 @@ export default function TransactionsPage() {
             <button onClick={toggleSelectAll}
               className="flex items-center gap-1.5 text-sm text-violet-600 font-medium hover:text-violet-800">
               {allPageSelected ? <CheckSquare size={16} /> : <Square size={16} />}
-              {allPageSelected ? 'Batal semua' : 'Pilih halaman ini'}
+              {allPageSelected ? t('tx_deselect_all') : t('tx_select_page')}
             </button>
             <span className="text-xs text-violet-400">|</span>
-            <button onClick={() => setSelected(new Set(transactions.filter(t => t.type === 'income').map(t => t.id)))}
+            <button onClick={() => setSelected(new Set(transactions.filter(tx => tx.type === 'income').map(tx => tx.id)))}
               className="text-xs px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-700 hover:bg-emerald-200 font-medium">
-              Semua Pemasukan
+              {t('tx_all_income')}
             </button>
-            <button onClick={() => setSelected(new Set(transactions.filter(t => t.type === 'expense').map(t => t.id)))}
+            <button onClick={() => setSelected(new Set(transactions.filter(tx => tx.type === 'expense').map(tx => tx.id)))}
               className="text-xs px-2.5 py-1 rounded-lg bg-pink-100 text-pink-700 hover:bg-pink-200 font-medium">
-              Semua Pengeluaran
+              {t('tx_all_expense')}
             </button>
             <div className="flex-1" />
             {selected.size > 0 && (
               <>
-                <span className="text-xs text-violet-500 font-medium">{selected.size} dipilih</span>
+                <span className="text-xs text-violet-500 font-medium">{selected.size} {t('tx_selected')}</span>
                 <button onClick={() => exportPDF(selectedTxs, `pilihan-${monthLabel}`)}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-pink-500 text-white text-xs font-medium hover:bg-pink-600">
                   <Download size={13} /> PDF
@@ -259,58 +261,58 @@ export default function TransactionsPage() {
       {loading ? <SkeletonList /> : paginated.length === 0 ? (
         <div className="bg-white rounded-2xl p-12 text-center border border-pink-100">
           <CreditCard size={48} className="mx-auto mb-3 text-pink-200" />
-          <p className="text-pink-400 text-sm">Belum ada transaksi</p>
+          <p className="text-pink-400 text-sm">{t('tx_empty')}</p>
         </div>
       ) : (
         <div className="space-y-3">
-          {paginated.map((t, i) => {
-            const isSelected = selected.has(t.id);
+          {paginated.map((tx, i) => {
+            const isSelected = selected.has(tx.id);
             return (
-              <motion.div key={t.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
+              <motion.div key={tx.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
                 className={`bg-white rounded-2xl p-4 border shadow-sm flex items-center gap-3 transition-all ${isSelected ? 'border-violet-300 bg-violet-50' : 'border-pink-100'} ${bulkMode ? 'cursor-pointer' : 'cursor-pointer sm:cursor-default'}`}
-                onClick={() => bulkMode ? toggleSelect(t.id) : setViewTx(t)}>
+                onClick={() => bulkMode ? toggleSelect(tx.id) : setViewTx(tx)}>
                 {bulkMode && (
-                  <div className="flex-shrink-0 text-violet-500" onClick={e => { e.stopPropagation(); toggleSelect(t.id); }}>
+                  <div className="flex-shrink-0 text-violet-500" onClick={e => { e.stopPropagation(); toggleSelect(tx.id); }}>
                     {isSelected ? <CheckSquare size={20} /> : <Square size={20} className="text-gray-300" />}
                   </div>
                 )}
-                <div className={`w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 ${t.type === 'transfer' ? 'bg-violet-100' : ''}`}
-                  style={t.type !== 'transfer' ? { backgroundColor: getCategoryColor(t.category) + '20' } : {}}>
-                  {t.type === 'transfer'
+                <div className={`w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 ${tx.type === 'transfer' ? 'bg-violet-100' : ''}`}
+                  style={tx.type !== 'transfer' ? { backgroundColor: getCategoryColor(tx.category) + '20' } : {}}>
+                  {tx.type === 'transfer'
                     ? <ArrowLeftRight size={18} className="text-violet-500" />
-                    : <CategoryIcon icon={getCategoryIcon(t.category)} size={18} style={{ color: getCategoryColor(t.category) }} />
+                    : <CategoryIcon icon={getCategoryIcon(tx.category)} size={18} style={{ color: getCategoryColor(tx.category) }} />
                   }
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="text-sm font-semibold text-gray-700">
-                      {t.type === 'transfer'
-                        ? `${t.walletType === 'cash' ? 'Cash' : 'Bank/E-Wallet'} → ${t.toWalletType === 'cash' ? 'Cash' : 'Bank/E-Wallet'}`
-                        : t.category}
+                      {tx.type === 'transfer'
+                        ? `${tx.walletType === 'cash' ? t('tx_wallet_cash') : t('tx_wallet_bank')} → ${tx.toWalletType === 'cash' ? t('tx_wallet_cash') : t('tx_wallet_bank')}`
+                        : tx.category}
                     </p>
                     <span className={`hidden sm:inline-flex text-xs px-2 py-0.5 rounded-full ${
-                      t.type === 'income' ? 'bg-emerald-100 text-emerald-600'
-                      : t.type === 'transfer' ? 'bg-violet-100 text-violet-600'
+                      tx.type === 'income' ? 'bg-emerald-100 text-emerald-600'
+                      : tx.type === 'transfer' ? 'bg-violet-100 text-violet-600'
                       : 'bg-pink-100 text-pink-600'}`}>
-                      {t.type === 'income' ? 'Pemasukan' : t.type === 'transfer' ? 'Transfer' : 'Pengeluaran'}
+                      {tx.type === 'income' ? t('common_income') : tx.type === 'transfer' ? t('common_transfer') : t('common_expense')}
                     </span>
-                    {t.type !== 'transfer' && (
-                      <span className={`hidden sm:inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${t.walletType === 'bank' ? 'bg-blue-100 text-blue-600' : 'bg-amber-100 text-amber-600'}`}>
-                        {t.walletType === 'bank' ? <CreditCard size={10} /> : <Banknote size={10} />}
-                        {t.walletType === 'bank' ? 'Bank/E-Wallet' : 'Cash'}
+                    {tx.type !== 'transfer' && (
+                      <span className={`hidden sm:inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${tx.walletType === 'bank' ? 'bg-blue-100 text-blue-600' : 'bg-amber-100 text-amber-600'}`}>
+                        {tx.walletType === 'bank' ? <CreditCard size={10} /> : <Banknote size={10} />}
+                        {tx.walletType === 'bank' ? t('common_bank') : t('common_cash')}
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-gray-400 truncate">{t.note || '—'} · {formatDate(t.date)}</p>
+                  <p className="text-xs text-gray-400 truncate">{tx.note || '—'} · {formatDate(tx.date)}</p>
                 </div>
-                <span className={`text-sm font-bold flex-shrink-0 ${t.type === 'income' ? 'text-emerald-500' : t.type === 'transfer' ? 'text-violet-500' : 'text-pink-500'}`}>
-                  {hidden ? 'Rp *****' : `${t.type === 'income' ? '+' : t.type === 'transfer' ? '⇄ ' : '-'}${formatRupiah(t.amount)}`}
+                <span className={`text-sm font-bold flex-shrink-0 ${tx.type === 'income' ? 'text-emerald-500' : tx.type === 'transfer' ? 'text-violet-500' : 'text-pink-500'}`}>
+                  {hidden ? 'Rp *****' : `${tx.type === 'income' ? '+' : tx.type === 'transfer' ? '⇄ ' : '-'}${formatRupiah(tx.amount)}`}
                 </span>
                 {!bulkMode && (
                   <div className="flex gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
-                    <button onClick={() => setViewTx(t)} className="hidden sm:flex p-2 rounded-lg hover:bg-violet-50 text-violet-400"><Eye size={15} /></button>
-                    <button onClick={() => t.type === 'transfer' ? setEditTransfer(t) : setEditTx(t)} className="p-2 rounded-lg hover:bg-pink-50 text-pink-400"><Pencil size={15} /></button>
-                    <button onClick={() => handleDelete(t.id)} className="p-2 rounded-lg hover:bg-red-50 text-red-400"><Trash2 size={15} /></button>
+                    <button onClick={() => setViewTx(tx)} className="hidden sm:flex p-2 rounded-lg hover:bg-violet-50 text-violet-400"><Eye size={15} /></button>
+                    <button onClick={() => tx.type === 'transfer' ? setEditTransfer(tx) : setEditTx(tx)} className="p-2 rounded-lg hover:bg-pink-50 text-pink-400"><Pencil size={15} /></button>
+                    <button onClick={() => handleDelete(tx.id)} className="p-2 rounded-lg hover:bg-red-50 text-red-400"><Trash2 size={15} /></button>
                   </div>
                 )}
               </motion.div>
@@ -330,24 +332,24 @@ export default function TransactionsPage() {
         </div>
       )}
 
-      <Modal open={showModal} onClose={() => setShowModal(false)} title="Tambah Transaksi">
+      <Modal open={showModal} onClose={() => setShowModal(false)} title={t('tx_modal_add')}>
         <TransactionForm onSubmit={handleAdd} onClose={() => setShowModal(false)} categories={cats} templates={tpls} />
       </Modal>
-      <Modal open={!!editTx} onClose={() => setEditTx(null)} title="Edit Transaksi">
+      <Modal open={!!editTx} onClose={() => setEditTx(null)} title={t('tx_modal_edit')}>
         {editTx && <TransactionForm onSubmit={handleEdit} onClose={() => setEditTx(null)} initial={editTx} categories={cats} />}
       </Modal>
-      <Modal open={showTransfer} onClose={() => setShowTransfer(false)} title="Transfer Saldo">
+      <Modal open={showTransfer} onClose={() => setShowTransfer(false)} title={t('tx_modal_transfer')}>
         <TransferForm
           onClose={() => setShowTransfer(false)}
-          onSuccess={() => { setShowTransfer(false); showToast('Transfer berhasil dicatat'); invalidateAndRefresh(); }}
+          onSuccess={() => { setShowTransfer(false); showToast(t('tx_added')); invalidateAndRefresh(); }}
         />
       </Modal>
-      <Modal open={!!editTransfer} onClose={() => setEditTransfer(null)} title="Edit Transfer">
+      <Modal open={!!editTransfer} onClose={() => setEditTransfer(null)} title={t('tx_modal_edit_transfer')}>
         {editTransfer && (
           <TransferForm
             initial={editTransfer}
             onClose={() => setEditTransfer(null)}
-            onSuccess={() => { setEditTransfer(null); showToast('Transfer diperbarui'); invalidateAndRefresh(); }}
+            onSuccess={() => { setEditTransfer(null); showToast(t('tx_updated')); invalidateAndRefresh(); }}
           />
         )}
       </Modal>

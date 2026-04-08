@@ -11,8 +11,8 @@ import { Transaction } from '@/lib/types';
 import { SkeletonCard } from '@/components/Skeleton';
 import { useFetch } from '@/lib/useFetch';
 import { useBalance } from '@/components/DashboardShell';
+import { useI18n, useMonths } from '@/lib/i18n';
 
-const MONTHS = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 const PIE_COLORS = ['#EC4899','#F9A8D4','#A855F7','#FB923C','#34D399','#60A5FA','#FBBF24','#F87171'];
 
 interface ReportData {
@@ -26,6 +26,8 @@ interface ReportData {
 
 export default function ReportsPage() {
   const now = new Date();
+  const { t } = useI18n();
+  const MONTHS = useMonths();
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
 
@@ -90,8 +92,8 @@ export default function ReportsPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-pink-800">Laporan</h1>
-          <p className="text-pink-400 text-sm">Analisis keuangan bulanan</p>
+          <h1 className="text-2xl font-bold text-pink-800">{t('report_title')}</h1>
+          <p className="text-pink-400 text-sm">{t('report_subtitle')}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <select value={month} onChange={e => setMonth(Number(e.target.value))}
@@ -117,9 +119,9 @@ export default function ReportsPage() {
         <>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {[
-              { label: 'Total Pemasukan', value: data.totalIncome, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-              { label: 'Total Pengeluaran', value: data.totalExpense, color: 'text-pink-600', bg: 'bg-pink-50' },
-              { label: 'Saldo Bersih', value: data.balance, color: 'text-violet-600', bg: 'bg-violet-50' },
+              { label: t('report_total_income'), value: data.totalIncome, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+              { label: t('report_total_expense'), value: data.totalExpense, color: 'text-pink-600', bg: 'bg-pink-50' },
+              { label: t('report_balance'), value: data.balance, color: 'text-violet-600', bg: 'bg-violet-50' },
             ].map((card, i) => (
               <motion.div key={card.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
                 className={`${card.bg} rounded-2xl p-5 border border-white shadow-sm`}>
@@ -131,25 +133,25 @@ export default function ReportsPage() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-white rounded-2xl p-5 border border-pink-100 shadow-sm">
-              <h3 className="text-sm font-semibold text-pink-700 mb-4">Pemasukan vs Pengeluaran Harian</h3>
+              <h3 className="text-sm font-semibold text-pink-700 mb-4">{t('report_chart_daily')}</h3>
               {dailyChartData.length === 0 ? (
-                <div className="h-48 flex items-center justify-center text-pink-300 text-sm">Belum ada data</div>
+                <div className="h-48 flex items-center justify-center text-pink-300 text-sm">{t('report_no_data')}</div>
               ) : (
                 <ResponsiveContainer width="100%" height={220}>
                   <BarChart data={dailyChartData}>
                     <XAxis dataKey="day" tick={{ fontSize: 11 }} />
                     <YAxis tick={{ fontSize: 11 }} tickFormatter={v => `${(v/1000).toFixed(0)}k`} />
                     <Tooltip formatter={(v) => formatRupiah(Number(v))} />
-                    <Bar dataKey="income" fill="#34D399" radius={[4,4,0,0]} name="Pemasukan" />
-                    <Bar dataKey="expense" fill="#F9A8D4" radius={[4,4,0,0]} name="Pengeluaran" />
+                    <Bar dataKey="income" fill="#34D399" radius={[4,4,0,0]} name={t('common_income')} />
+                    <Bar dataKey="expense" fill="#F9A8D4" radius={[4,4,0,0]} name={t('common_expense')} />
                   </BarChart>
                 </ResponsiveContainer>
               )}
             </div>
             <div className="bg-white rounded-2xl p-5 border border-pink-100 shadow-sm">
-              <h3 className="text-sm font-semibold text-pink-700 mb-4">Pengeluaran per Kategori</h3>
+              <h3 className="text-sm font-semibold text-pink-700 mb-4">{t('report_chart_category')}</h3>
               {data.byCategory.length === 0 ? (
-                <div className="h-48 flex items-center justify-center text-pink-300 text-sm">Belum ada pengeluaran</div>
+                <div className="h-48 flex items-center justify-center text-pink-300 text-sm">{t('report_no_expense')}</div>
               ) : (
                 <ResponsiveContainer width="100%" height={220}>
                   <PieChart>
@@ -166,46 +168,46 @@ export default function ReportsPage() {
 
           <div className="bg-white rounded-2xl border border-pink-100 shadow-sm overflow-hidden">
             <div className="p-5 border-b border-pink-50">
-              <h3 className="text-sm font-semibold text-pink-700">Semua Transaksi</h3>
+              <h3 className="text-sm font-semibold text-pink-700">{t('report_all_tx')}</h3>
             </div>
             {data.transactions.length === 0 ? (
               <div className="p-12 text-center">
                 <BarChart2 size={48} className="mx-auto mb-3 text-pink-200" />
-                <p className="text-pink-400 text-sm">Belum ada transaksi bulan ini</p>
+                <p className="text-pink-400 text-sm">{t('report_no_tx')}</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-pink-50">
-                    <tr>{['Tanggal','Tipe','Kategori','Catatan','Nominal'].map(h => (
+                    <tr>{[t('report_col_date'), t('report_col_type'), t('report_col_category'), t('report_col_note'), t('report_col_amount')].map(h => (
                       <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-pink-600">{h}</th>
                     ))}</tr>
                   </thead>
                   <tbody>
-                    {data.transactions.map((t, i) => (
-                      <tr key={t.id} className={i % 2 === 0 ? 'bg-white' : 'bg-pink-50/30'}>
-                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{formatDate(t.date)}</td>
+                    {data.transactions.map((tx, i) => (
+                      <tr key={tx.id} className={i % 2 === 0 ? 'bg-white' : 'bg-pink-50/30'}>
+                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{formatDate(tx.date)}</td>
                         <td className="px-4 py-3">
                           <span className={`text-xs px-2 py-0.5 rounded-full ${
-                            t.type === 'income' ? 'bg-emerald-100 text-emerald-600'
-                            : t.type === 'transfer' ? 'bg-violet-100 text-violet-600'
+                            tx.type === 'income' ? 'bg-emerald-100 text-emerald-600'
+                            : tx.type === 'transfer' ? 'bg-violet-100 text-violet-600'
                             : 'bg-pink-100 text-pink-600'
                           }`}>
-                            {t.type === 'income' ? 'Pemasukan' : t.type === 'transfer' ? 'Transfer' : 'Pengeluaran'}
+                            {tx.type === 'income' ? t('common_income') : tx.type === 'transfer' ? t('common_transfer') : t('common_expense')}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-gray-600">
-                          {t.type === 'transfer'
-                            ? `${t.walletType === 'cash' ? 'Cash' : 'Bank/E-Wallet'} → ${t.toWalletType === 'cash' ? 'Cash' : 'Bank/E-Wallet'}`
-                            : t.category}
+                          {tx.type === 'transfer'
+                            ? `${tx.walletType === 'cash' ? t('tx_wallet_cash') : t('tx_wallet_bank')} → ${tx.toWalletType === 'cash' ? t('tx_wallet_cash') : t('tx_wallet_bank')}`
+                            : tx.category}
                         </td>
-                        <td className="px-4 py-3 text-gray-400 max-w-[200px] truncate">{t.note||'—'}</td>
+                        <td className="px-4 py-3 text-gray-400 max-w-[200px] truncate">{tx.note||'—'}</td>
                         <td className={`px-4 py-3 font-semibold ${
-                          t.type === 'income' ? 'text-emerald-500'
-                          : t.type === 'transfer' ? 'text-violet-500'
+                          tx.type === 'income' ? 'text-emerald-500'
+                          : tx.type === 'transfer' ? 'text-violet-500'
                           : 'text-pink-500'
                         }`}>
-                          {hidden ? 'Rp *****' : `${t.type === 'income' ? '+' : t.type === 'transfer' ? '⇄ ' : '-'}${formatRupiah(t.amount)}`}
+                          {hidden ? 'Rp *****' : `${tx.type === 'income' ? '+' : tx.type === 'transfer' ? '⇄ ' : '-'}${formatRupiah(tx.amount)}`}
                         </td>
                       </tr>
                     ))}
