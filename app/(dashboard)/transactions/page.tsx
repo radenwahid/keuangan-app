@@ -19,6 +19,7 @@ import { useFetch } from '@/lib/useFetch';
 import { cacheInvalidate } from '@/lib/cache';
 import { useBalance } from '@/components/DashboardShell';
 import { useI18n, useMonths } from '@/lib/i18n';
+import ConfirmDialog from '@/components/ConfirmDialog';
 
 const PAGE_SIZE = 10;
 
@@ -39,6 +40,7 @@ export default function TransactionsPage() {
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkMode, setBulkMode] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const { showToast } = useToast();
   const { hidden } = useBalance();
 
@@ -83,10 +85,10 @@ export default function TransactionsPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm(t('tx_delete_confirm'))) return;
     const res = await fetch(`/api/transactions/${id}`, { method: 'DELETE' });
     if (res.ok) { showToast(t('tx_deleted')); invalidateAndRefresh(); }
     else showToast(t('tx_delete_fail'), 'error');
+    setDeleteId(null);
   }
 
   const paginated = transactions.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -312,7 +314,7 @@ export default function TransactionsPage() {
                   <div className="flex gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
                     <button onClick={() => setViewTx(tx)} className="hidden sm:flex p-2 rounded-lg hover:bg-violet-50 text-violet-400"><Eye size={15} /></button>
                     <button onClick={() => tx.type === 'transfer' ? setEditTransfer(tx) : setEditTx(tx)} className="p-2 rounded-lg hover:bg-pink-50 text-pink-400"><Pencil size={15} /></button>
-                    <button onClick={() => handleDelete(tx.id)} className="p-2 rounded-lg hover:bg-red-50 text-red-400"><Trash2 size={15} /></button>
+                    <button onClick={() => setDeleteId(tx.id)} className="p-2 rounded-lg hover:bg-red-50 text-red-400"><Trash2 size={15} /></button>
                   </div>
                 )}
               </motion.div>
@@ -354,6 +356,16 @@ export default function TransactionsPage() {
         )}
       </Modal>
       <TransactionReceipt transaction={viewTx} categories={cats} onClose={() => setViewTx(null)} />
+
+      <ConfirmDialog
+        open={!!deleteId}
+        title={t('tx_delete_confirm')}
+        message="Data transaksi ini akan dihapus permanen dan tidak bisa dikembalikan."
+        confirmLabel="Hapus"
+        cancelLabel={t('form_cancel')}
+        onConfirm={() => deleteId && handleDelete(deleteId)}
+        onCancel={() => setDeleteId(null)}
+      />
     </div>
   );
 }

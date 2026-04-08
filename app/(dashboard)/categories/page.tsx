@@ -9,6 +9,7 @@ import { useToast } from '@/components/Toast';
 import { SkeletonList } from '@/components/Skeleton';
 import { useFetch } from '@/lib/useFetch';
 import { useI18n } from '@/lib/i18n';
+import ConfirmDialog from '@/components/ConfirmDialog';
 
 const COLOR_OPTIONS = ['#EC4899','#F97316','#EF4444','#10B981','#3B82F6','#8B5CF6','#F59E0B','#14B8A6','#64748B','#A855F7'];
 
@@ -85,6 +86,7 @@ function CategoryForm({ initial, onSubmit, onClose }: {
 export default function CategoriesPage() {
   const [showModal, setShowModal] = useState(false);
   const [editCat, setEditCat] = useState<Category | null>(null);
+  const [deleteCat, setDeleteCat] = useState<Category | null>(null);
   const [tab, setTab] = useState<'expense' | 'income'>('expense');
   const { t } = useI18n();
   const { showToast } = useToast();
@@ -106,10 +108,10 @@ export default function CategoriesPage() {
   }
 
   async function handleDelete(cat: Category) {
-    if (!confirm(t('cat_delete_confirm', cat.name))) return;
     const res = await fetch(`/api/categories/${cat.id}`, { method: 'DELETE' });
     if (res.ok) { showToast(t('cat_deleted')); refresh(); }
     else { const e = await res.json(); showToast(e.error || t('cat_delete_fail'), 'error'); }
+    setDeleteCat(null);
   }
 
   const filtered = categories.filter(c => c.type === tab);
@@ -158,7 +160,7 @@ export default function CategoriesPage() {
               <div className="flex gap-1">
                 <button onClick={() => setEditCat(cat)} className="p-2 rounded-lg hover:bg-pink-50 text-pink-400"><Pencil size={15} /></button>
                 {!cat.isDefault && (
-                  <button onClick={() => handleDelete(cat)} className="p-2 rounded-lg hover:bg-red-50 text-red-400"><Trash2 size={15} /></button>
+                  <button onClick={() => setDeleteCat(cat)} className="p-2 rounded-lg hover:bg-red-50 text-red-400"><Trash2 size={15} /></button>
                 )}
               </div>
             </motion.div>
@@ -172,6 +174,16 @@ export default function CategoriesPage() {
       <Modal open={!!editCat} onClose={() => setEditCat(null)} title={t('cat_modal_edit')}>
         {editCat && <CategoryForm initial={editCat} onSubmit={handleEdit} onClose={() => setEditCat(null)} />}
       </Modal>
+
+      <ConfirmDialog
+        open={!!deleteCat}
+        title={`Hapus "${deleteCat?.name}"?`}
+        message="Kategori ini akan dihapus permanen. Transaksi yang sudah menggunakan kategori ini tidak akan terpengaruh."
+        confirmLabel="Hapus"
+        cancelLabel={t('form_cancel')}
+        onConfirm={() => deleteCat && handleDelete(deleteCat)}
+        onCancel={() => setDeleteCat(null)}
+      />
     </div>
   );
 }
