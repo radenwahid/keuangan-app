@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { jwtVerify } from 'jose';
 
-const ADMIN_SECRET = process.env.ADMIN_JWT_SECRET || 'admin-secret-key-2024';
-const USER_SECRET = process.env.JWT_SECRET || 'keuangan-secret-key-2024';
+const USER_SECRET = process.env.JWT_SECRET!;
+const ADMIN_SECRET = process.env.ADMIN_JWT_SECRET!;
 
 // Route yang butuh auth admin
 const ADMIN_PROTECTED = ['/panel/dashboard', '/panel/profile'];

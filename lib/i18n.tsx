@@ -11,6 +11,7 @@ export const translations = {
     nav_categories: 'Kategori',
     nav_templates: 'Template',
     nav_reports: 'Laporan',
+    nav_savings: 'Tabungan',
     nav_profile: 'Profil',
     nav_logout: 'Keluar',
 
@@ -196,6 +197,7 @@ export const translations = {
     nav_categories: 'Categories',
     nav_templates: 'Templates',
     nav_reports: 'Reports',
+    nav_savings: 'Savings',
     nav_profile: 'Profile',
     nav_logout: 'Logout',
 

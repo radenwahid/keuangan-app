@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Home, CreditCard, Tag, FileText, BarChart2, User, LogOut, Menu, X, Wallet, ChevronLeft, ChevronRight,
+  Home, CreditCard, Tag, FileText, BarChart2, User, LogOut, Menu, X, Wallet, ChevronLeft, ChevronRight, PiggyBank,
 } from 'lucide-react';
 import { useState } from 'react';
 import { getInitials } from '@/lib/utils';
@@ -16,6 +16,7 @@ const navItems = [
   { href: '/categories', labelKey: 'nav_categories' as const, icon: Tag },
   { href: '/templates', labelKey: 'nav_templates' as const, icon: FileText },
   { href: '/reports', labelKey: 'nav_reports' as const, icon: BarChart2 },
+  { href: '/savings', labelKey: 'nav_savings' as const, icon: PiggyBank },
   { href: '/profile', labelKey: 'nav_profile' as const, icon: User },
 ];
 

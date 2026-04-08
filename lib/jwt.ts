@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 
-const SECRET = process.env.JWT_SECRET || 'keuangan-secret-key-2024';
+const SECRET = process.env.JWT_SECRET!;
 
 export interface JWTPayload {
   userId: string;
