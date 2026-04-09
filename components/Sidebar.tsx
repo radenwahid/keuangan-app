@@ -33,7 +33,7 @@ function DesktopSidebar({ userName, userEmail }: SidebarProps) {
 
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' });
-    router.push('/login');
+    window.location.href = '/login';
   }
 
   return (
@@ -114,7 +114,7 @@ export default function Sidebar({ userName, userEmail }: SidebarProps) {
 
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' });
-    router.push('/login');
+    window.location.href = '/login';
   }
 
   return (

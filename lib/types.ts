@@ -6,6 +6,8 @@ export interface User {
   role: 'admin' | 'user';
   createdAt: string;
   onboardingDone?: boolean;
+  provider?: 'local' | 'google';  // metode registrasi
+  googleId?: string;               // Google sub ID, untuk cek duplikat
 }
 
 export type WalletType = 'cash' | 'bank';

@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { formatDate } from '@/lib/utils';
+import ConfirmDialog from '@/components/ConfirmDialog';
 
 interface AdminUser {
   id: string;
@@ -138,6 +139,7 @@ export default function AdminDashboard() {
   const [sortBy, setSortBy] = useState<'name' | 'createdAt' | 'transactionCount'>('createdAt');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [resetUser, setResetUser] = useState<AdminUser | null>(null);
+  const [deleteUser, setDeleteUser] = useState<AdminUser | null>(null);
   const [toast, setToast] = useState('');
 
   const fetchData = useCallback(async () => {
@@ -158,9 +160,10 @@ export default function AdminDashboard() {
   }
 
   async function handleDelete(user: AdminUser) {
-    if (!confirm(`Hapus user "${user.name}" beserta semua datanya?`)) return;
     const res = await fetch(`/api/admin/users/${user.id}`, { method: 'DELETE' });
     if (res.ok) { showToast(`User ${user.name} berhasil dihapus`); fetchData(); }
+    else showToast('Gagal menghapus user');
+    setDeleteUser(null);
   }
 
   async function handleLogout() {
@@ -344,7 +347,7 @@ export default function AdminDashboard() {
                             </button>
                             {user.role !== 'admin' && (
                               <button
-                                onClick={() => handleDelete(user)}
+                                onClick={() => setDeleteUser(user)}
                                 className="p-1.5 rounded-lg hover:bg-red-50 text-pink-200 hover:text-red-400 transition-colors"
                               >
                                 <Trash2 size={14} />
@@ -379,7 +382,7 @@ export default function AdminDashboard() {
                         </div>
                       </div>
                       {user.role !== 'admin' && (
-                        <button onClick={() => handleDelete(user)}
+                        <button onClick={() => setDeleteUser(user)}
                           className="p-2 rounded-lg hover:bg-red-50 text-pink-200 hover:text-red-400 transition-colors">
                           <Trash2 size={15} />
                         </button>
@@ -422,6 +425,17 @@ export default function AdminDashboard() {
           />
         )}
       </AnimatePresence>
+
+      {/* Confirm hapus user */}
+      <ConfirmDialog
+        open={!!deleteUser}
+        title={`Hapus "${deleteUser?.name}"?`}
+        message={`Semua data user ini (transaksi, kategori, template) akan dihapus permanen. Tindakan ini tidak bisa dibatalkan.`}
+        confirmLabel="Hapus User"
+        cancelLabel="Batal"
+        onConfirm={() => deleteUser && handleDelete(deleteUser)}
+        onCancel={() => setDeleteUser(null)}
+      />
 
       {/* Toast */}
       <AnimatePresence>

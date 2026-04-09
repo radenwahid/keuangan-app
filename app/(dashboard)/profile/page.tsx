@@ -1,10 +1,12 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Pencil, Check, X, KeyRound, User } from 'lucide-react';
+import { Pencil, Check, X, KeyRound, User, Trash2 } from 'lucide-react';
 import { getInitials, formatDate } from '@/lib/utils';
 import { useToast } from '@/components/Toast';
 import { useI18n } from '@/lib/i18n';
+import ConfirmDialog from '@/components/ConfirmDialog';
 
 interface ProfileData {
   id: string;
@@ -15,9 +17,12 @@ interface ProfileData {
 
 export default function ProfilePage() {
   const { t } = useI18n();
+  const router = useRouter();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [editName, setEditName] = useState(false);
   const [newName, setNewName] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -43,6 +48,19 @@ export default function ProfilePage() {
       showToast(t('profile_name_updated'));
     } else showToast(t('profile_name_fail'), 'error');
     setLoadingName(false);
+  }
+
+  async function deleteAccount() {
+    setDeletingAccount(true);
+    const res = await fetch('/api/profile/delete', { method: 'DELETE' });
+    if (res.ok) {
+      router.push('/login');
+      router.refresh();
+    } else {
+      showToast('Gagal menghapus akun', 'error');
+      setDeletingAccount(false);
+    }
+    setShowDeleteConfirm(false);
   }
 
   async function savePassword(e: React.FormEvent) {
@@ -148,6 +166,33 @@ export default function ProfilePage() {
           </button>
         </form>
       </motion.div>
+
+      {/* Danger zone — hapus akun */}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+        className="bg-white rounded-3xl p-6 border border-red-100 shadow-sm">
+        <h2 className="text-sm font-semibold text-red-500 mb-2 flex items-center gap-2">
+          <Trash2 size={16} /> Hapus Akun
+        </h2>
+        <p className="text-xs text-gray-400 mb-4">
+          Akun dan semua data kamu (transaksi, kategori, template) akan dihapus permanen dan tidak bisa dikembalikan.
+        </p>
+        <button
+          onClick={() => setShowDeleteConfirm(true)}
+          className="px-4 py-2.5 rounded-xl border border-red-200 text-red-500 text-sm font-medium hover:bg-red-50 transition-colors"
+        >
+          Hapus Akun Saya
+        </button>
+      </motion.div>
+
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        title="Hapus Akun?"
+        message={`Semua data akun "${profile?.name}" akan dihapus permanen termasuk seluruh transaksi, kategori, dan template. Tindakan ini tidak bisa dibatalkan.`}
+        confirmLabel={deletingAccount ? 'Menghapus...' : 'Ya, Hapus Akun'}
+        cancelLabel="Batal"
+        onConfirm={deleteAccount}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </div>
   );
 }

@@ -19,6 +19,8 @@ function isAdminProtected(pathname: string) {
 function isUserProtected(pathname: string) {
   // root "/" juga protected
   if (pathname === '/') return true;
+  // complete-profile tidak protected (user belum punya JWT)
+  if (pathname.startsWith('/complete-profile')) return false;
   return USER_PROTECTED.some((p) => pathname.startsWith(p));
 }
 

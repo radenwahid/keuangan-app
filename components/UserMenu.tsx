@@ -28,7 +28,7 @@ export default function UserMenu({ userName, userEmail }: Props) {
 
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' });
-    router.push('/login');
+    window.location.href = '/login';
   }
 
   return (
