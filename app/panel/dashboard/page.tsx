@@ -343,14 +343,14 @@ export default function AdminDashboard() {
                               onClick={() => setResetUser(user)}
                               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-fuchsia-50 hover:bg-fuchsia-100 text-fuchsia-500 text-xs border border-fuchsia-100 transition-colors"
                             >
-                              <KeyRound size={12} /> Reset PW
+                              <KeyRound size={12} /> Reset
                             </button>
                             {user.role !== 'admin' && (
                               <button
                                 onClick={() => setDeleteUser(user)}
-                                className="p-1.5 rounded-lg hover:bg-red-50 text-pink-200 hover:text-red-400 transition-colors"
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-500 text-xs border border-red-200 transition-colors"
                               >
-                                <Trash2 size={14} />
+                                <Trash2 size={12} /> Hapus
                               </button>
                             )}
                           </div>
@@ -372,8 +372,7 @@ export default function AdminDashboard() {
                     className="p-4 space-y-3"
                   >
                       <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-pink-400 to-fuchsia-400 flex items-center justify-center text-xs font-bold text-white">
+                      <div className="flex items-center gap-3">                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-pink-400 to-fuchsia-400 flex items-center justify-center text-xs font-bold text-white">
                           {getInitials(user.name)}
                         </div>
                         <div>
@@ -381,12 +380,6 @@ export default function AdminDashboard() {
                           <p className="text-pink-400 text-xs">{user.email}</p>
                         </div>
                       </div>
-                      {user.role !== 'admin' && (
-                        <button onClick={() => setDeleteUser(user)}
-                          className="p-2 rounded-lg hover:bg-red-50 text-pink-200 hover:text-red-400 transition-colors">
-                          <Trash2 size={15} />
-                        </button>
-                      )}
                     </div>
                     <div className="flex items-center gap-2 text-xs flex-wrap">
                       <span className="text-pink-400">Daftar: {formatDate(user.createdAt)}</span>
@@ -407,6 +400,12 @@ export default function AdminDashboard() {
                     >
                       <KeyRound size={13} /> Reset Password
                     </button>
+                    {user.role !== 'admin' && (
+                      <button onClick={() => setDeleteUser(user)}
+                        className="w-full flex items-center justify-center gap-2 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-500 text-xs border border-red-200 transition-colors">
+                        <Trash2 size={13} /> Hapus
+                      </button>
+                    )}
                   </motion.div>
                 ))}
               </div>
