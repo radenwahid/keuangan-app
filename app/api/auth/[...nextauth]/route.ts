@@ -78,7 +78,8 @@ const handler = NextAuth({
     },
 
     async session({ session, token }) {
-      session.user = {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (session.user as any) = {
         ...session.user,
         id: token.userId as string,
         needsProfile: (token.needsProfile as boolean) ?? false,
